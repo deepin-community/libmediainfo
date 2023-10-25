@@ -1,0 +1,3 @@
+#!/bin/bash
+
+mediainfo Release/Example.ogg | grep -q Bit.rate

@@ -18,6 +18,8 @@
 
 //---------------------------------------------------------------------------
 #include "MediaInfo/Reader/Reader__Base.h"
+typedef void CURL;
+
 //---------------------------------------------------------------------------
 
 namespace MediaInfoLib
@@ -41,15 +43,14 @@ public :
     size_t Format_Test_PerParser_Seek (MediaInfo_Internal* MI, size_t Method, int64u Value, int64u ID);
 
     // Open/Close library
-    static bool Load(const Ztring File_Name=Ztring());
+    static bool Load(const Ztring &File_Name=Ztring());
 
-public:
     struct curl_data;
 
-private :
-    curl_data*          Curl_Data;
+    curl_data* Curl_Data;
     void Curl_Log(int Result);
     void Curl_Log(int Result, const Ztring &Message);
+    size_t SetOptions();
 };
 
 } //NameSpace

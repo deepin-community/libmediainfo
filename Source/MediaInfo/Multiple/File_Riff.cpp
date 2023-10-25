@@ -80,6 +80,24 @@ namespace Elements
     const int32u WAVE_ds64=0x64733634;
 }
 
+//---------------------------------------------------------------------------
+const char* Format_Settings_Names_Video[]=
+{
+    "BitmapInfoHeader",                 // BITMAPINFOHEADER, https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
+};
+const char* Format_Settings_Names_Audio[]=
+{
+    "WaveFormat",                       // WAVEFORMAT, https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformat
+    "PcmWaveformat",                    // PCMWAVEFORMAT, https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-pcmwaveformat
+    "WaveFormatEx",                     // WAVEFORMATEX, https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatex
+    "WaveFormatExtensible",             // WAVEFORMATEXTENSIBLE, https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatextensible
+};
+const char** Format_Settings_Names[] =
+{
+    Format_Settings_Names_Video,
+    Format_Settings_Names_Audio,
+};
+
 //***************************************************************************
 // Format
 //***************************************************************************
@@ -130,6 +148,8 @@ File_Riff::File_Riff()
     SMV_BlockSize=0;
     SamplesPerSec=0;
     stream_Count=0;
+    Format_Settings[0]=0;
+    Format_Settings[1]=0;
     BlockAlign=0;
     rec__Present=false;
     NeedOldIndex=true;
@@ -193,7 +213,12 @@ void File_Riff::Streams_Finish ()
     if (DolbyAudioMetadata) //Before ADM for having content before all ADM stuff
         Merge(*DolbyAudioMetadata, Stream_Audio, 0, 0);
     if (Adm)
+    {
+        Finish(Adm);
         Merge(*Adm, Stream_Audio, 0, 0);
+    }
+    if (DolbyAudioMetadata) //After ADM for having content inside ADM stuff
+        DolbyAudioMetadata->Merge(*this, 0);
     if (Adm && (!DolbyAudioMetadata || !DolbyAudioMetadata->HasSegment9) && Retrieve_Const(Stream_Audio, 0, "AdmProfile_Format")==__T("Dolby Atmos Master"))
     {
         Clear(Stream_Audio, 0, "AdmProfile");
@@ -293,6 +318,15 @@ void File_Riff::Streams_Finish ()
                     Fill(StreamKind_Last, StreamPos_Last, General_ID, Temp_ID, true);
                     Fill(StreamKind_Last, StreamPos_Last, General_StreamOrder, Temp_ID_String, true);
 
+                    //Special case: multiple fmt/data chunks in WAV
+                    if (StreamKind_Last==Stream_Audio //TODO: smarter merge
+                        && Temp->second.Compression==1
+                        && Retrieve(Stream_General, 0, General_Format)==__T("Wave")
+                        && Temp->second.Parsers[0]->Get(Stream_Audio, 0, Audio_Format)==__T("PCM"))
+                    {
+                        for (size_t i=0; i<StreamPos_Base; i++)
+                            Merge(*Temp->second.Parsers[0], Stream_Audio, i, i);
+                    }
 
                     //Special case - MPEG Video + Captions
                     if (StreamKind_Last==Stream_Video && Temp->second.Parsers[0]->Count_Get(Stream_Text))
@@ -600,6 +634,11 @@ void File_Riff::Streams_Finish ()
         Fill(Stream_General, 0, General_Interleaved, ((Interleaved0_1<Interleaved1_1 && Interleaved0_10>Interleaved1_1)
                                                    || (Interleaved1_1<Interleaved0_1 && Interleaved1_10>Interleaved0_1))?"Yes":"No");
 
+    //Settings
+    for (size_t i=0; i<2; i++)
+        if (Format_Settings[i])
+            Fill(Stream_General, 0, General_Format_Settings, Format_Settings_Names[i][Format_Settings[i]-1]);
+
     //MD5
     size_t Pos=0;
     for (size_t StreamKind=Stream_General+1; StreamKind<Stream_Max; StreamKind++)
@@ -829,7 +868,7 @@ bool File_Riff::Header_Begin()
                 if (StreamItem->second.Parsers.size()>1 || (!StreamItem->second.Parsers.empty() && !StreamItem->second.Parsers[0]->Status[IsFilled]))
                     ShouldStop=false;
         }
-        if (ShouldStop)
+        if (ShouldStop && Buffer_DataToParse_End)
         {
             File_GoTo=Buffer_DataToParse_End;
             Buffer_Offset=Buffer_Size;

@@ -98,6 +98,9 @@
 #if defined(MEDIAINFO_MXF_YES)
     #include "MediaInfo/Multiple/File_Mxf.h"
 #endif
+#if defined(MEDIAINFO_NSV_YES)
+    #include "MediaInfo/Multiple/File_Nsv.h"
+#endif
 #if defined(MEDIAINFO_NUT_YES)
     #include "MediaInfo/Multiple/File_Nut.h"
 #endif
@@ -200,6 +203,9 @@
 #if defined(MEDIAINFO_APE_YES)
     #include "MediaInfo/Audio/File_Ape.h"
 #endif
+#if defined(MEDIAINFO_APTX100_YES)
+    #include "MediaInfo/Audio/File_Aptx100.h"
+#endif
 #if defined(MEDIAINFO_AU_YES)
     #include "MediaInfo/Audio/File_Au.h"
 #endif
@@ -214,6 +220,9 @@
 #endif
 #if defined(MEDIAINFO_DTS_YES)
     #include "MediaInfo/Audio/File_Dts.h"
+#endif
+#if defined(MEDIAINFO_DTSUHD_YES)
+    #include "MediaInfo/Audio/File_DtsUhd.h"
 #endif
 #if defined(MEDIAINFO_DOLBYE_YES)
     #include "MediaInfo/Audio/File_DolbyE.h"
@@ -498,6 +507,9 @@ File__MultipleParsing::File__MultipleParsing()
     #if defined(MEDIAINFO_MXF_YES)
         Parser.push_back(new File_Mxf());
     #endif
+    #if defined(MEDIAINFO_NSV_YES)
+        Parser.push_back(new File_Nsv());
+    #endif
     #if defined(MEDIAINFO_NUT_YES)
         Parser.push_back(new File_Nut());
     #endif
@@ -601,6 +613,9 @@ File__MultipleParsing::File__MultipleParsing()
     #if defined(MEDIAINFO_APE_YES)
         Parser.push_back(new File_Ape());
     #endif
+    #if defined(MEDIAINFO_APTX100_YES)
+        Parser.push_back(new File_Aptx100());
+    #endif
     #if defined(MEDIAINFO_AU_YES)
         Parser.push_back(new File_Au());
     #endif
@@ -615,6 +630,9 @@ File__MultipleParsing::File__MultipleParsing()
     #endif
     #if defined(MEDIAINFO_DTS_YES)
         Parser.push_back(new File_Dts());
+    #endif
+    #if defined(MEDIAINFO_DTSUHD_YES)
+        Parser.push_back(new File_DtsUhd());
     #endif
 //    Too many false-positives
 //    #if defined(MEDIAINFO_DOLBYE_YES)

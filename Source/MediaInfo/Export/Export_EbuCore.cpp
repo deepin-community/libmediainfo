@@ -42,13 +42,13 @@ extern MediaInfo_Config Config;
 //***************************************************************************
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeString(Node* _Node, Ztring _Value, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeString(Node* _Node, const Ztring& _Value, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     _Node->Add_Child(string("ebucore:")+(Version>=Export_EbuCore::Version_1_6?"technicalAttributeString":"comment"), _Value.To_UTF8(), "typeLabel", _TypeLabel, true);
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -58,7 +58,7 @@ void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t St
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -68,13 +68,13 @@ void Add_TechnicalAttributeString_IfNotEmpty(MediaInfo_Internal &MI, stream_t St
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeBoolean(Node* _Node, Ztring _Value, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeBoolean(Node* _Node, const Ztring& _Value, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     _Node->Add_Child(string("ebucore:")+(Version>=Export_EbuCore::Version_1_6?"technicalAttributeBoolean":"comment"), string(_Value==__T("Yes")?"true":"false"), "typeLabel", _TypeLabel, true);
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -84,7 +84,7 @@ void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t S
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
+void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -94,7 +94,7 @@ void Add_TechnicalAttributeBoolean_IfNotEmpty(MediaInfo_Internal &MI, stream_t S
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeInteger(Node* _Node, Ztring _Value, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
+void Add_TechnicalAttributeInteger(Node* _Node, const Ztring& _Value, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
 {
     _Node->Add_Child("ebucore:"+string(Version>=Export_EbuCore::Version_1_6?"technicalAttributeInteger":"comment"), _Value.To_UTF8(), "typeLabel", _TypeLabel, true);
     if (Unit && Version>=Export_EbuCore::Version_1_6)
@@ -102,7 +102,7 @@ void Add_TechnicalAttributeInteger(Node* _Node, Ztring _Value, string _TypeLabel
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeInteger_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
+void Add_TechnicalAttributeInteger_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, size_t FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -112,7 +112,7 @@ void Add_TechnicalAttributeInteger_IfNotEmpty(MediaInfo_Internal &MI, stream_t S
 };
 
 //---------------------------------------------------------------------------
-void Add_TechnicalAttributeInteger_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, string _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
+void Add_TechnicalAttributeInteger_IfNotEmpty(MediaInfo_Internal &MI, stream_t StreamKind, size_t StreamPos, const char* FieldName, Node* _Node, const string& _TypeLabel, Export_EbuCore::version Version=Export_EbuCore::Version_Max, const char* Unit=NULL)
 {
     if (StreamKind==Stream_Max || StreamPos==(size_t)-1)
         return;
@@ -1397,7 +1397,7 @@ void EbuCore_Transform_TimeCode(Node* Parent, MediaInfo_Internal &MI, size_t Str
     }
 
     if (!MI.Get(Stream_Other, StreamPos, Other_ID).empty())
-        Add_TechnicalAttributeBoolean(Child, MI.Get(Stream_Other, StreamPos, __T("TimeCode_Striped")), "Stripped");
+        Add_TechnicalAttributeBoolean(Child, MI.Get(Stream_Other, StreamPos, __T("TimeCode_Stripped")), "Stripped");
 
     if (Is1_5)
         Child->XmlCommentOut="(timecodeFormat not in XSD)";
@@ -1421,20 +1421,18 @@ void EbuCore_Transform_Metadata(Node* Parent, MediaInfo_Internal &MI, size_t Str
 }
 
 //---------------------------------------------------------------------------
-Ztring Export_EbuCore::Transform(MediaInfo_Internal &MI, version Version, acquisitiondataoutputmode AcquisitionDataOutputMode, format Format, Ztring ExternalMetadataValues, Ztring ExternalMetaDataConfig)
+Ztring Export_EbuCore::Transform(MediaInfo_Internal &MI, version Version, acquisitiondataoutputmode AcquisitionDataOutputMode, format Format, const Ztring& ExternalMetadataValues, const Ztring& ExternalMetaDataConfig)
 {
     bool UseExternalMetaData=(!ExternalMetaDataConfig.empty() && !ExternalMetadataValues.empty());
 
     //Current date/time is ISO format
     time_t Seconds=time(NULL);
     Ztring DateTime; DateTime.Date_From_Seconds_1970((int32u)Seconds);
-    if (DateTime.size()>=4 && DateTime[0]==__T('U') && DateTime[1]==__T('T') && DateTime[2]==__T('C') && DateTime[3]==__T(' '))
+    if (!DateTime.empty())
     {
-        DateTime.erase(0, 4);
-        DateTime+=__T('Z');
+        DateTime.FindAndReplace(__T("UTC "), __T(""));
+        DateTime.FindAndReplace(__T(" "), __T("T"));
     }
-    Ztring Date=DateTime.substr(0, 10);
-    Ztring Time=DateTime.substr(11);
 
     size_t As11_Core_Pos=(size_t)-1;
     size_t As11_Segmentation_Pos=(size_t)-1;
@@ -1478,7 +1476,9 @@ Ztring Export_EbuCore::Transform(MediaInfo_Internal &MI, version Version, acquis
         Node_CoreMain->Add_Attribute("writingLibraryName", "MediaInfoLib");
         Node_CoreMain->Add_Attribute("writingLibraryVersion", MediaInfoLib::Config.Info_Version_Get().SubString(__T(" - v"), Ztring()));
     }
+    Ztring Date=DateTime.substr(0, 10);
     Node_CoreMain->Add_Attribute("dateLastModified", Date);
+    Ztring Time=DateTime.substr(11);
     Node_CoreMain->Add_Attribute("timeLastModified", Time);
 
     //coreMetadata
@@ -1780,34 +1780,32 @@ Ztring Export_EbuCore::Transform(MediaInfo_Internal &MI, version Version, acquis
     if (!MI.Get(Stream_General, 0, General_Encoded_Date).empty())
     {
         Ztring DateTime=MI.Get(Stream_General, 0, General_Encoded_Date);
-        if (DateTime.size()>=4 && DateTime[0]==__T('U') && DateTime[1]==__T('T') && DateTime[2]==__T('C') && DateTime[3]==__T(' '))
-        {
-            DateTime.erase(0, 4);
-            DateTime+=__T('Z');
-        }
-        Ztring Date=DateTime.substr(0, 10);
-        Ztring Time=DateTime.substr(11);
-
+        if (DateTime.size()>=4 && DateTime.find(__T(" UTC"), DateTime.size()-4)!=string::npos)
+            DateTime.erase(DateTime.size()-4);
         Node* Child=Node_Format->Add_Child("ebucore:dateCreated", true);
+        Ztring Date=DateTime.substr(0, 10);
         Child->Add_Attribute("startDate", Date);
-        Child->Add_Attribute("startTime", Time);
+        if (DateTime.size()>11)
+        {
+            Ztring Time=DateTime.substr(11);
+            Child->Add_Attribute("startTime", Time);
+        }
     }
 
     //format - dateModified
     if (!MI.Get(Stream_General, 0, General_Tagged_Date).empty())
     {
         Ztring DateTime=MI.Get(Stream_General, 0, General_Tagged_Date);
-        if (DateTime.size()>=4 && DateTime[0]==__T('U') && DateTime[1]==__T('T') && DateTime[2]==__T('C') && DateTime[3]==__T(' '))
-        {
-            DateTime.erase(0, 4);
-            DateTime+=__T('Z');
-        }
-        Ztring Date=DateTime.substr(0, 10);
-        Ztring Time=DateTime.substr(11);
-
+        if (DateTime.size()>=4 && DateTime.find(__T(" UTC"), DateTime.size()-4)!=string::npos)
+            DateTime.erase(DateTime.size()-4);
         Node* Child=Node_Format->Add_Child("ebucore:dateModified", true);
+        Ztring Date=DateTime.substr(0, 10);
         Child->Add_Attribute("startDate", Date);
-        Child->Add_Attribute("startTime", Time);
+        if (DateTime.size()>11)
+        {
+            Ztring Time=DateTime.substr(11);
+            Child->Add_Attribute("startTime", Time);
+        }
     }
 
     if (!UseExternalMetaData)
