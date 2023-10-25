@@ -7,7 +7,7 @@ Build-Depends: debhelper-compat (= 12),
                dh-python,
                doxygen,
                tofrodos,
-               libzen-dev (>= 0.4.25),
+               libzen-dev (>= 0.4.41),
                libtinyxml2-dev,
                libcurl4-gnutls-dev,
                libmms-dev,
@@ -24,7 +24,7 @@ Package: libmediainfo-dev
 Section: libdevel
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
-Depends: libzen-dev,
+Depends: libzen-dev (>= 0.4.41),
          libcurl4-gnutls-dev,
          zlib1g-dev,
          libmediainfo0v5 (= ${binary:Version}),
@@ -83,6 +83,7 @@ Description: library for reading metadata from media files -- shared library
 Package: python3-mediainfodll
 Section: python
 Architecture: all
+Multi-Arch: foreign
 Depends: ${python3:Depends}, libmediainfo0v5 (>= ${source:Version}),
          ${misc:Depends}
 Description: library for reading metadata from media files -- shared library
@@ -110,6 +111,7 @@ Description: library for reading metadata from media files -- shared library
 Package: libmediainfo-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Description: library for reading metadata from media files -- documentation
  MediaInfo is a library used for retrieving technical information and other

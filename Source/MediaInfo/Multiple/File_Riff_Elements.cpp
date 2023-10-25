@@ -285,6 +285,7 @@ namespace Elements
     const int32u AIFF_NAME=0x4E414D45;
     const int32u AIFF_ID3_=0x49443320;
     const int32u AVI_=0x41564920;
+    const int32u AVI__CSET=0x43534554;
     const int32u AVI__cset=0x63736574;
     const int32u AVI__Cr8r=0x43723872;
     const int32u AVI__exif=0x65786966;
@@ -436,7 +437,10 @@ namespace Elements
     const int32u WAVE_axml=0x61786D6C;
     const int32u WAVE_bext=0x62657874;
     const int32u WAVE_bxml=0x62786D6C;
+    const int32u WAVE_chna=0x63686E61;
     const int32u WAVE_cue_=0x63756520;
+    const int32u WAVE_CSET=0x43534554;
+    const int32u WAVE_cset=0x63736574;
     const int32u WAVE_data=0x64617461;
     const int32u WAVE_dbmd=0x64626D64;
     const int32u WAVE_ds64=0x64733634;
@@ -446,6 +450,7 @@ namespace Elements
     const int32u WAVE_id3_=0x69643320;
     const int32u WAVE_INFO=0x494E464F;
     const int32u WAVE_iXML=0x69584D4C;
+    const int32u WAVE_MD5_=0x4D443520;
     const int32u WAVE_mext=0x6D657874;
     const int32u wave=0x77617665;
     const int32u wave_data=0x64617461;
@@ -460,6 +465,25 @@ namespace Elements
     UUID(QLCM_QCELP2,                                           5E7F6D42, B115, 11D0, BA91, 00805FB4B97E)
     UUID(QLCM_EVRC,                                             E689D48D, 9076, 46B5, 91EF, 736A5100CEB4)
     UUID(QLCM_SMV,                                              8D7C2B75, A797, ED49, 985E, D53C8CC75F84)
+}
+
+//***************************************************************************
+// Info
+//***************************************************************************
+
+static std::string Riff_CodePage(int16u CodePage)
+{
+    switch (CodePage) // Formated based on https://www.iana.org/assignments/character-sets/character-sets.xhtml
+    {
+        case   437: return "IBM437";
+        case   850: return "IBM850";
+        case   858: return "IBM00858";
+        case  1252: return "windows-1252";
+        case 28591: return "ISO-8859-1";
+        case 28592: return "ISO-8859-2";
+        case 65001: return "UTF-8";
+        default: return to_string(CodePage);
+    }
 }
 
 //***************************************************************************
@@ -493,6 +517,7 @@ void File_Riff::Data_Parse()
     LIST(AVI_)
         ATOM_BEGIN
         ATOM(AVI__Cr8r);
+        ATOM(AVI__CSET)
         ATOM(AVI__cset)
         LIST(AVI__exif)
             ATOM_DEFAULT_ALONE(AVI__exif_xxxx)
@@ -634,8 +659,11 @@ void File_Riff::Data_Parse()
         ATOM(WAVE_bext)
         LIST(WAVE_bxml)
             break;
+        ATOM(WAVE_chna)
         LIST(WAVE_data)
             break;
+        ATOM(WAVE_CSET)
+        ATOM(WAVE_cset)
         ATOM(WAVE_cue_)
         ATOM(WAVE_dbmd)
         ATOM(WAVE_ds64)
@@ -646,6 +674,7 @@ void File_Riff::Data_Parse()
         LIST(WAVE_INFO)
             ATOM_DEFAULT_ALONE(WAVE_INFO_xxxx)
         ATOM(WAVE_iXML)
+        ATOM(WAVE_MD5_)
         ATOM(WAVE_mext)
         ATOM_END
     LIST(wave)
@@ -894,15 +923,20 @@ void File_Riff::AVI__Cr8r()
 }
 
 //---------------------------------------------------------------------------
-void File_Riff::AVI__cset()
+void File_Riff::AVI__CSET()
 {
     Element_Name("Regional settings");
 
     //Parsing
-    Skip_L2(                                                    "CodePage"); //TODO: take a look about IBM/MS RIFF/MCI Specification 1.0
+    int16u CodePage;
+    Get_L2 (CodePage,                                           "CodePage"); //TODO: take a look about IBM/MS RIFF/MCI Specification 1.0
     Skip_L2(                                                    "CountryCode");
     Skip_L2(                                                    "LanguageCode");
     Skip_L2(                                                    "Dialect");
+
+    FILLING_BEGIN()
+        Fill(Stream_General, 0, "CharacterSet", Riff_CodePage(CodePage));
+    FILLING_END()
 }
 
 //---------------------------------------------------------------------------
@@ -1265,6 +1299,8 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
     Get_L2 (BlockAlign,                                         "BlockAlign");
     if (Element_Offset+2<=Element_Size)
         Get_L2 (BitsPerSample,                                  "BitsPerSample");
+    if (Format_Settings[1]<1 && Element_Offset==Element_Size)
+        Format_Settings[1]=1; // WAVEFORMAT
 
     if (FormatTag==1) //Only for PCM
     {
@@ -1301,8 +1337,8 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
     StreamItem.AvgBytesPerSec=AvgBytesPerSec; //Saving bitrate for each stream
     if (SamplesPerSec && TimeReference!=(int64u)-1)
     {
-        Fill(Stream_Audio, 0, Audio_Delay, float64_int64s(((float64)TimeReference)*1000/SamplesPerSec));
-        Fill(Stream_Audio, 0, Audio_Delay_Source, "Container (bext)");
+        Fill(Stream_Audio, StreamPos_Last, Audio_Delay, float64_int64s(((float64)TimeReference)*1000/SamplesPerSec));
+        Fill(Stream_Audio, StreamPos_Last, Audio_Delay_Source, "Container (bext)");
     }
 
     //Creating the parser
@@ -1377,6 +1413,8 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
     }
     #endif
     Open_Buffer_Init_All();
+    if (Format_Settings[1]<2 && Element_Offset==Element_Size)
+        Format_Settings[1]=2; // PCMWAVEFORMAT
 
     //Options
     if (Element_Offset+2>Element_Size)
@@ -1385,6 +1423,8 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
     //Parsing
     int16u Option_Size;
     Get_L2 (Option_Size,                                        "cbSize");
+    if (Format_Settings[1]<3 && Option_Size==Element_Size-Element_Offset)
+        Format_Settings[1]=3;
 
     //Filling
     if (Option_Size>0)
@@ -1411,7 +1451,7 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
             Skip_XX(Element_Size-Element_Offset,               "Error");
     }
 
-    if (Retrieve(Stream_Audio, 0, Audio_Format)==__T("PCM"))
+    if (Retrieve(Stream_Audio, StreamPos_Last, Audio_Format)==__T("PCM"))
     {
         //BlockAlign
         int32u ComputedBlockAlign=Channels*BitsPerSample/8;
@@ -1534,6 +1574,8 @@ void File_Riff::AVI__hdlr_strl_strf_auds_ExtensibleWave(int16u BitsPerSample)
     Get_GUID(SubFormat,                                         "SubFormat");
 
     FILLING_BEGIN();
+        if (Format_Settings[1]<4)
+            Format_Settings[1]=4; // WAVEFORMATEXTENSIBLE
         if ((SubFormat.hi&0x0000FFFFFFFFFFFFLL)==0x0000000000001000LL && SubFormat.lo==0x800000AA00389B71LL)
         {
             int16u LegacyCodecID=(int16u)((((SubFormat.hi>>48)&0xFF)<<8) | (SubFormat.hi>>56)); // It is Little Endian
@@ -1720,6 +1762,9 @@ void File_Riff::AVI__hdlr_strl_strf_vids()
     Skip_L4(                                                    "YPelsPerMeter");
     Skip_L4(                                                    "ClrUsed");
     Skip_L4(                                                    "ClrImportant");
+
+    if (Format_Settings[0]<1 && Element_Offset==Element_Size)
+        Format_Settings[0]=1;
 
     //Filling
     Stream[Stream_ID].Compression=Compression;
@@ -2416,7 +2461,6 @@ void File_Riff::AVI__MD5_()
         MD5_PerItem.From_UTF8(uint128toString(MD5Stored, 16));
         while (MD5_PerItem.size()<32)
             MD5_PerItem.insert(MD5_PerItem.begin(), '0'); //Padding with 0, this must be a 32-byte string
-        MD5_PerItem.MakeLowerCase();
         MD5s.push_back(MD5_PerItem);
     }
 }
@@ -3001,17 +3045,17 @@ void File_Riff::CDDA_fmt_()
         Fill(Stream_General, 0, General_FileSize, File_Size+TDuration*2352, 10, true);
 
         Stream_Prepare(Stream_Audio);
-        Fill(Stream_Audio, 0, Audio_Format, "PCM");
-        Fill(Stream_Audio, 0, Audio_Format_Settings_Endianness, "Little");
-        Fill(Stream_Audio, 0, Audio_BitDepth, 16);
-        Fill(Stream_Audio, 0, Audio_Channel_s_, 2);
-        Fill(Stream_Audio, 0, Audio_SamplingRate, 44100);
-        Fill(Stream_Audio, 0, Audio_FrameRate, (float)75);
-        Fill(Stream_Audio, 0, Audio_BitRate, 1411200);
-        Fill(Stream_Audio, 0, Audio_Compression_Mode, "Lossless");
-        Fill(Stream_Audio, 0, Audio_FrameCount, TDuration);
-        Fill(Stream_Audio, 0, Audio_Duration, float32_int32s(((float32)TDuration)*1000/75));
-        Fill(Stream_Audio, 0, Audio_Delay, float32_int32s(((float32)TPosition)*1000/75));
+        Fill(Stream_Audio, StreamPos_Last, Audio_Format, "PCM");
+        Fill(Stream_Audio, StreamPos_Last, Audio_Format_Settings_Endianness, "Little");
+        Fill(Stream_Audio, StreamPos_Last, Audio_BitDepth, 16);
+        Fill(Stream_Audio, StreamPos_Last, Audio_Channel_s_, 2);
+        Fill(Stream_Audio, StreamPos_Last, Audio_SamplingRate, 44100);
+        Fill(Stream_Audio, StreamPos_Last, Audio_FrameRate, (float)75);
+        Fill(Stream_Audio, StreamPos_Last, Audio_BitRate, 1411200);
+        Fill(Stream_Audio, StreamPos_Last, Audio_Compression_Mode, "Lossless");
+        Fill(Stream_Audio, StreamPos_Last, Audio_FrameCount, TDuration);
+        Fill(Stream_Audio, StreamPos_Last, Audio_Duration, float32_int32s(((float32)TDuration)*1000/75));
+        Fill(Stream_Audio, StreamPos_Last, Audio_Delay, float32_int32s(((float32)TPosition)*1000/75));
 
         //No more need data
         Finish("CDDA");
@@ -3237,15 +3281,15 @@ void File_Riff::QLCM_fmt_()
         switch (codec_guid.hi)
         {
             case Elements::QLCM_QCELP1 :
-            case Elements::QLCM_QCELP2 : Fill(Stream_Audio, 0, Audio_Format, "QCELP"); Fill(Stream_Audio, 0, Audio_Codec, "QCELP"); break;
-            case Elements::QLCM_EVRC   : Fill(Stream_Audio, 0, Audio_Format, "EVRC"); Fill(Stream_Audio, 0, Audio_Codec, "EVRC"); break;
-            case Elements::QLCM_SMV    : Fill(Stream_Audio, 0, Audio_Format, "SMV"); Fill(Stream_Audio, 0, Audio_Codec, "SMV"); break;
+            case Elements::QLCM_QCELP2 : Fill(Stream_Audio, StreamPos_Last, Audio_Format, "QCELP"); Fill(Stream_Audio, StreamPos_Last, Audio_Codec, "QCELP"); break;
+            case Elements::QLCM_EVRC   : Fill(Stream_Audio, StreamPos_Last, Audio_Format, "EVRC"); Fill(Stream_Audio, StreamPos_Last, Audio_Codec, "EVRC"); break;
+            case Elements::QLCM_SMV    : Fill(Stream_Audio, StreamPos_Last, Audio_Format, "SMV"); Fill(Stream_Audio, StreamPos_Last, Audio_Codec, "SMV"); break;
             default :                    ;
         }
-        Fill(Stream_Audio, 0, Audio_BitRate, average_bps);
-        Fill(Stream_Audio, 0, Audio_SamplingRate, sampling_rate);
-        Fill(Stream_Audio, 0, Audio_BitDepth, sample_size);
-        Fill(Stream_Audio, 0, Audio_Channel_s_, 1);
+        Fill(Stream_Audio, StreamPos_Last, Audio_BitRate, average_bps);
+        Fill(Stream_Audio, StreamPos_Last, Audio_SamplingRate, sampling_rate);
+        Fill(Stream_Audio, StreamPos_Last, Audio_BitDepth, sample_size);
+        Fill(Stream_Audio, StreamPos_Last, Audio_Channel_s_, 1);
     FILLING_END();
 }
 
@@ -3381,7 +3425,7 @@ void File_Riff::RMP3_data()
 {
     Element_Name("Raw datas");
 
-    Fill(Stream_Audio, 0, Audio_StreamSize, Buffer_DataToParse_End-Buffer_DataToParse_Begin);
+    Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, Buffer_DataToParse_End-Buffer_DataToParse_Begin);
     Stream_Prepare(Stream_Audio);
 
     //Creating parser
@@ -3395,7 +3439,7 @@ void File_Riff::RMP3_data()
         StreamItem.StreamPos=0;
         StreamItem.Parsers.push_back(Parser);
     #else //MEDIAINFO_MPEG4_YES
-        Fill(Stream_Audio, 0, Audio_Format, "MPEG Audio");
+        Fill(Stream_Audio, StreamPos_Last, Audio_Format, "MPEG Audio");
         Skip_XX(Buffer_DataToParse_End-Buffer_DataToParse_Begin, "Data");
     #endif
 }
@@ -3691,9 +3735,9 @@ void File_Riff::WAVE_axml()
     Adm_New->MuxingMode+="xml";
     Open_Buffer_Init(Adm_New);
     Open_Buffer_Continue(Adm_New, UncompressedData, UncompressedData_Size);
-    Finish(Adm_New);
     if (Adm_New->Status[IsAccepted])
     {
+        Adm_New->chna_Move(Adm);
         delete Adm;
         Adm=Adm_New;
     }
@@ -3837,8 +3881,8 @@ void File_Riff::WAVE_bext()
         Fill(Stream_General, 0, General_Encoded_Library_Settings, History);
         if (SamplesPerSec && TimeReference!=(int64u)-1)
         {
-            Fill(Stream_Audio, 0, Audio_Delay, ((float64)TimeReference*1000/SamplesPerSec), 6);
-            Fill(Stream_Audio, 0, Audio_Delay_Source, "Container (bext)");
+            Fill(Stream_Audio, StreamPos_Last, Audio_Delay, ((float64)TimeReference*1000/SamplesPerSec), 6);
+            Fill(Stream_Audio, StreamPos_Last, Audio_Delay_Source, "Container (bext)");
         }
         if (Version>=1 && UMID1 != 0 && UMID2 != 0)
         {
@@ -3850,17 +3894,48 @@ void File_Riff::WAVE_bext()
         if (Version>=2)
         {
             if (LoudnessValue!=0x7FFF)
-                Fill(Stream_Audio, 0, "LoudnessValue", (float)((int16s)LoudnessValue)/100, 2);
+                Fill(Stream_Audio, StreamPos_Last, "LoudnessValue", (float)((int16s)LoudnessValue)/100, 2);
             if (LoudnessRange!=0x7FFF)
-                Fill(Stream_Audio, 0, "LoudnessRange", (float)((int16s)LoudnessRange)/100, 2);
+                Fill(Stream_Audio, StreamPos_Last, "LoudnessRange", (float)((int16s)LoudnessRange)/100, 2);
             if (MaxTruePeakLevel!=0x7FFF)
-                Fill(Stream_Audio, 0, "MaxTruePeakLevel", (float)((int16s)MaxTruePeakLevel)/100, 2);
+                Fill(Stream_Audio, StreamPos_Last, "MaxTruePeakLevel", (float)((int16s)MaxTruePeakLevel)/100, 2);
             if (MaxMomentaryLoudness!=0x7FFF)
-                Fill(Stream_Audio, 0, "MaxMomentaryLoudness", (float)((int16s)MaxMomentaryLoudness)/100, 2);
+                Fill(Stream_Audio, StreamPos_Last, "MaxMomentaryLoudness", (float)((int16s)MaxMomentaryLoudness)/100, 2);
             if (MaxShortTermLoudness!=0x7FFF)
-                Fill(Stream_Audio, 0, "MaxShortTermLoudness", (float)((int16s)MaxShortTermLoudness)/100, 2);
+                Fill(Stream_Audio, StreamPos_Last, "MaxShortTermLoudness", (float)((int16s)MaxShortTermLoudness)/100, 2);
         }
     FILLING_END();
+}
+
+//---------------------------------------------------------------------------
+void File_Riff::WAVE_chna()
+{
+    Element_Name("Channels mapping");
+
+    //Parsing
+    int16u numUIDs;
+    if (!Adm)
+    {
+        Adm=new File_Adm;
+        Open_Buffer_Init(Adm);
+    }
+    Skip_L2(                                                    "numTracks");
+    Get_L2 (numUIDs,                                            "numUIDs");
+    for (int32u Pos=0; Pos<numUIDs; Pos++)
+    {
+        Element_Begin1("audioID");
+        int16u trackIndex;
+        string UID;
+        Get_L2 (trackIndex,                                     "trackIndex");
+        Get_String (12, UID,                                    "UID");
+        Skip_String(14,                                         "trackRef");
+        Skip_String(11,                                         "packRef");
+        Skip_L1(                                                "pad");
+        Adm->chna_Add(trackIndex, UID);
+        Element_End0();
+        if (Element_Offset>=Element_Size)
+            break;
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -3900,16 +3975,16 @@ void File_Riff::WAVE_data()
 
     FILLING_BEGIN();
         int64u StreamSize=Buffer_DataToParse_End-Buffer_DataToParse_Begin;
-        Fill(Stream_Audio, 0, Audio_StreamSize, StreamSize, 10, true);
-        if (Retrieve(Stream_Audio, 0, Audio_Format)==__T("PCM") && BlockAlign)
-            Fill(Stream_Audio, 0, Audio_SamplingCount, StreamSize/BlockAlign, 10, true);
-        float64 Duration=Retrieve(Stream_Audio, 0, Audio_Duration).To_float64();
-        float64 BitRate=Retrieve(Stream_Audio, 0, Audio_BitRate).To_float64();
+        Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, StreamSize, 10, true);
+        if (Retrieve(Stream_Audio, StreamPos_Last, Audio_Format)==__T("PCM") && BlockAlign)
+            Fill(Stream_Audio, StreamPos_Last, Audio_SamplingCount, StreamSize/BlockAlign, 10, true);
+        float64 Duration=Retrieve(Stream_Audio, StreamPos_Last, Audio_Duration).To_float64();
+        float64 BitRate=Retrieve(Stream_Audio, StreamPos_Last, Audio_BitRate).To_float64();
         if (Duration)
         {
             float64 BitRate_New=((float64)StreamSize)*8*1000/Duration;
             if (BitRate_New<BitRate*0.95 || BitRate_New>BitRate*1.05)
-                Fill(Stream_Audio, 0, Audio_BitRate, BitRate_New, 10, true); //Correcting the bitrate, it was false in the header
+                Fill(Stream_Audio, StreamPos_Last, Audio_BitRate, BitRate_New, 10, true); //Correcting the bitrate, it was false in the header
         }
         else if (BitRate)
         {
@@ -3918,8 +3993,8 @@ void File_Riff::WAVE_data()
                 Duration=((float64)LittleEndian2int32u(Buffer+Buffer_Offset-4))*8*1000/BitRate; //TODO: RF64 is not handled
             else
                 Duration=((float64)StreamSize)*8*1000/BitRate;
-            Fill(Stream_General, 0, General_Duration, Duration, 0, true);
-            Fill(Stream_Audio, 0, Audio_Duration, Duration, 0, true);
+            Fill(Stream_General, 0, General_Duration, Retrieve_Const(Stream_General, 0, General_Duration).To_int64u()+Duration, 0, true); // Found files with 2 fmt/data chunks
+            Fill(Stream_Audio, StreamPos_Last, Audio_Duration, Duration, 0, true);
         }
     FILLING_END();
 }
@@ -3979,14 +4054,14 @@ void File_Riff::WAVE_ds64()
         if (dataSize && dataSize<File_Size)
         {
             WAVE_data_Size=dataSize;
-            if (Retrieve(Stream_Audio, 0, Audio_StreamSize).empty()) // Not the priority
-                Fill(Stream_Audio, 0, Audio_StreamSize, WAVE_data_Size);
+            if (Retrieve(Stream_Audio, StreamPos_Last, Audio_StreamSize).empty()) // Not the priority
+                Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, WAVE_data_Size);
         }
         if (sampleCount && sampleCount<File_Size)
         {
             WAVE_fact_samplesCount=sampleCount;
-            if (WAVE_fact_samplesCount && WAVE_fact_samplesCount<File_Size && Retrieve(Stream_Audio, 0, Audio_SamplingCount).empty()) // Not the priority
-                Fill(Stream_Audio, 0, Audio_SamplingCount, WAVE_fact_samplesCount);
+            if (WAVE_fact_samplesCount && WAVE_fact_samplesCount<File_Size && Retrieve(Stream_Audio, StreamPos_Last, Audio_SamplingCount).empty()) // Not the priority
+                Fill(Stream_Audio, StreamPos_Last, Audio_SamplingCount, WAVE_fact_samplesCount);
         }
         if (WAVE_data_Size && WAVE_data_Size<File_Size && WAVE_fact_samplesCount && WAVE_fact_samplesCount<File_Size)
         {
@@ -4007,10 +4082,10 @@ void File_Riff::WAVE_fact()
     Get_L4 (SamplesCount,                                       "SamplesCount");
 
     FILLING_BEGIN();
-        if (!Retrieve(Stream_Audio, 0, Audio_SamplingCount).empty()) // Not the priority
+        if (!Retrieve(Stream_Audio, StreamPos_Last, Audio_SamplingCount).empty()) // Not the priority
         {
         int64u SamplesCount64=SamplesCount==(int32u)-1?WAVE_fact_samplesCount:SamplesCount;
-        float64 SamplingRate=Retrieve(Stream_Audio, 0, Audio_SamplingRate).To_float64();
+        float64 SamplingRate=Retrieve(Stream_Audio, StreamPos_Last, Audio_SamplingRate).To_float64();
         if (SamplesCount64!=(int64u)-1 && SamplingRate)
         {
             //Calculating
@@ -4020,7 +4095,7 @@ void File_Riff::WAVE_fact()
             bool IsOK=true;
             if (File_Size!=(int64u)-1)
             {
-                float64 BitRate=Retrieve(Stream_Audio, 0, Audio_BitRate).To_float64();
+                float64 BitRate=Retrieve(Stream_Audio, StreamPos_Last, Audio_BitRate).To_float64();
                 if (BitRate)
                 {
                     int64u Duration_FromBitRate = File_Size * 8 * 1000 / BitRate;
@@ -4031,7 +4106,7 @@ void File_Riff::WAVE_fact()
 
             //Filling
             if (IsOK)
-                Fill(Stream_Audio, 0, Audio_SamplingCount, SamplesCount, 10, true);
+                Fill(Stream_Audio, StreamPos_Last, Audio_SamplingCount, SamplesCount, 10, true);
         }
         }
     FILLING_END();
@@ -4172,7 +4247,7 @@ void File_Riff::Parser_Pcm(stream& StreamItem, int16u Channels, int16u BitsPerSa
     #if defined(MEDIAINFO_DTS_YES)
     {
         File_Dts* Parser=new File_Dts;
-        Parser->Frame_Count_Valid=2;
+        Parser->Frame_Count_Valid=8;
         Parser->ShouldContinueParsing=true;
         #if MEDIAINFO_DEMUX
             if (Config->Demux_Unpacketize_Get() && Retrieve(Stream_General, 0, General_Format)==__T("Wave"))

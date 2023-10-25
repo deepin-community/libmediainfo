@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -eu
+
+srctestdir=$(pwd)
+tmpdir=$AUTOPKGTEST_TMP
+
+mkdir -p "$tmpdir"
+
+cp -a "$srctestdir"/. "$tmpdir"
+cd "$tmpdir/Project/GNU/Library/test"
+
+# tweak buildsystem to build against installed libs
+sed -i -re '/mil_analyze_(CPPFLAGS|LDFLAGS)/d' Makefile.am
+cat >>Makefile.am <<'EOF'
+mil_analyze_CPPFLAGS = $(libzen_CFLAGS) $(libmediainfo_CFLAGS)
+mil_analyze_LDADD = $(libzen_LIBS) $(libmediainfo_LIBS)
+EOF
+
+cat >configure.ac <<'EOF'
+AC_INIT([libmediainfo-tests], [23.03])
+AC_CONFIG_SRCDIR([./Source/analyze.cpp])
+AC_CANONICAL_BUILD
+AM_INIT_AUTOMAKE([foreign -Wall])
+AC_PROG_CXX
+
+PKG_CHECK_MODULES([libzen], [libzen])
+PKG_CHECK_MODULES([libmediainfo], [libmediainfo])
+AC_OUTPUT([Makefile])
+EOF
+
+# prep artifacts for testing
+mkdir -p Files
+ln -s "$srctestdir"/Release/Example.ogg Files/Example.ogg
+(cd Files && ls -1 >files.txt)
+
+# build and run tests
+autoreconf -vfi
+./configure
+make check

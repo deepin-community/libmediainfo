@@ -11,10 +11,10 @@ Bug-Debian: https://bugs.debian.org/825038
  1 file changed, 3 deletions(-)
 
 diff --git a/Project/GNU/Library/configure.ac b/Project/GNU/Library/configure.ac
-index 1bfc8c2..0cc6d1e 100644
+index 024f9da..d8135ba 100644
 --- a/Project/GNU/Library/configure.ac
 +++ b/Project/GNU/Library/configure.ac
-@@ -797,9 +797,6 @@ case "${build}" in
+@@ -803,9 +803,6 @@ case "${build}" in
      CFLAGS="$CFLAGS -D__MONTAVISTA__"
      CXXFLAGS="$CXXFLAGS -D__MONTAVISTA__"
    ;;

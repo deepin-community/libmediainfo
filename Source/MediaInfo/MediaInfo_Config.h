@@ -34,8 +34,8 @@ using namespace ZenLib;
 using std::vector;
 using std::string;
 using std::map;
+using std::set;
 using std::make_pair;
-using namespace std;
 //---------------------------------------------------------------------------
 
 namespace MediaInfoLib
@@ -70,6 +70,14 @@ enum basicformat
 #else //MEDIAINFO_COMPRESS
     #define MEDIAINFO_FLAGX 0
 #endif //MEDIAINFO_COMPRESS
+
+enum class display_if
+{
+    Never,
+    Needed,
+    Supported,
+    Always,
+};
 
 //***************************************************************************
 // Class MediaInfo_Config
@@ -236,7 +244,7 @@ public :
     const Ztring   &Iso639_1_Get (const Ztring &Value);
     const Ztring   &Iso639_2_Get (const Ztring &Value);
     const Ztring    Iso639_Find (const Ztring &Value);
-    const Ztring    Iso639_Translate (const Ztring Value);
+    const Ztring    Iso639_Translate (const Ztring &Value);
 
     const Ztring   &Info_Get (stream_t KindOfStream, const Ztring &Value, info_t KindOfInfo=Info_Text);
     const Ztring   &Info_Get (stream_t KindOfStream, size_t Pos, info_t KindOfInfo=Info_Text);
@@ -270,6 +278,8 @@ public :
     #if MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
           void      TimeOut_Set (int64u Value);
           int64u    TimeOut_Get ();
+          void      AcceptSignals_Set (bool Value);
+          bool      AcceptSignals_Get ();
     #endif //MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
 
           void      MpegTs_MaximumOffset_Set (int64u Value);
@@ -319,6 +329,15 @@ public :
 
     ZtringListList  SubFile_Config_Get ();
 
+    #if MEDIAINFO_ADVANCED
+          void        Collection_Trigger_Set (const Ztring& Value);
+          int64s      Collection_Trigger_Get();
+          Ztring      Collection_Display_Set(const Ztring& Value);
+          display_if  Collection_Display_Get();
+    #else //MEDIAINFO_ADVANCED
+          display_if  Collection_Display_Get() {return display_if::Needed;}
+    #endif //MEDIAINFO_ADVANCED
+
     void            CustomMapping_Set (const Ztring &Value);
     Ztring          CustomMapping_Get (const Ztring &Format, const Ztring &Field);
     bool            CustomMapping_IsPresent (const Ztring &Format, const Ztring &Field);
@@ -342,6 +361,33 @@ public :
     #if defined(MEDIAINFO_GRAPHVIZ_YES)
         bool GraphSvgPluginState();
     #endif //defined(MEDIAINFO_GRAPH_YES)
+
+    #if MEDIAINFO_CONFORMANCE
+          string        AdmProfile (const Ztring& Value);
+          struct adm_profile
+          {
+              bool Auto;
+              int8u BS2076;
+              int8u Ebu3392;
+
+              adm_profile() :
+                  Auto(false),
+                  BS2076((int8u)-1),
+                  Ebu3392((int8u)-1)
+              {}
+          };
+          adm_profile   AdmProfile();
+          string        AdmProfile_List();
+          string        Mp4Profile(const Ztring& Value);
+          string        Mp4Profile();
+          string        Mp4Profile_List();
+          string        UsacProfile(const Ztring& Value);
+          int8u         UsacProfile();
+          string        UsacProfile_List();
+          string        Profile_List();
+          void          WarningError(bool Value);
+          bool          WarningError();
+    #endif
 
     #if defined(MEDIAINFO_LIBCURL_YES)
           bool      CanHandleUrls();
@@ -393,6 +439,7 @@ private :
     #endif //MEDIAINFO_ADVANCED
     #if MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
         int64u      TimeOut;
+        bool        AcceptSignals;
     #endif //MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
 
     int64u          MpegTs_MaximumOffset;
@@ -474,6 +521,11 @@ private :
 
     ZtringListList  SubFile_Config;
 
+    #if MEDIAINFO_ADVANCED
+        int64s      Collection_Trigger;
+        display_if  Collection_Display;
+    #endif //MEDIAINFO_ADVANCED
+
     std::map<Ztring, std::map<Ztring, Ztring> > CustomMapping;
 
     ZenLib::CriticalSection CS;
@@ -490,6 +542,13 @@ private :
     MediaInfo_Event_CallBackFunction* Event_CallBackFunction; //void Event_Handler(unsigned char* Data_Content, size_t Data_Size, void* UserHandler)
     void*           Event_UserHandler;
     #endif //MEDIAINFO_EVENTS
+
+    #if MEDIAINFO_CONFORMANCE
+    adm_profile     Adm_Profile;
+    string          Mp4_Profile;
+    int8u           Usac_Profile;
+    bool            Warning_Error;
+    #endif
 
     #if defined(MEDIAINFO_LIBCURL_YES)
           urlencode URLEncode;

@@ -1,0 +1,15 @@
+Tests: mil-test
+Depends: libmediainfo-dev,
+         pkg-config,
+         g++ | c++-compiler,
+         autoconf,
+         automake,
+         wget,
+         ca-certificates,
+         libxml2-utils,
+         python3-demjson
+Restrictions: allow-stderr needs-internet
+
+Tests: check-mediainfo
+Depends: mediainfo, @
+Restrictions: allow-stderr

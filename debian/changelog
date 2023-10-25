@@ -1,3 +1,72 @@
+libmediainfo (23.10+dfsg-1) unstable; urgency=medium
+
+  * [c66c7dc] New upstream version 23.10+dfsg
+
+ -- Chow Loong Jin <hyperair@debian.org>  Fri, 06 Oct 2023 14:26:50 +0800
+
+libmediainfo (23.09+dfsg-1) unstable; urgency=medium
+
+  * [0ccc6b7] New upstream version 23.09+dfsg
+  * [9248962] Refresh patches
+
+ -- Chow Loong Jin <hyperair@debian.org>  Tue, 26 Sep 2023 11:27:12 +0800
+
+libmediainfo (23.07+dfsg-1) unstable; urgency=medium
+
+  * [98c07bb] New upstream version 23.07+dfsg
+
+ -- Chow Loong Jin <hyperair@debian.org>  Thu, 13 Jul 2023 10:30:22 +0800
+
+libmediainfo (23.06+dfsg-1) unstable; urgency=medium
+
+  * [015b254] New upstream version 23.06+dfsg
+  * [bf0a88a] Refresh patches
+
+ -- Chow Loong Jin <hyperair@debian.org>  Tue, 04 Jul 2023 11:28:09 +0800
+
+libmediainfo (23.04+dfsg-1) unstable; urgency=medium
+
+  * [1d4561c] New upstream version 23.04+dfsg
+
+ -- Chow Loong Jin <hyperair@debian.org>  Thu, 27 Apr 2023 11:37:16 +0800
+
+libmediainfo (23.03+dfsg-1) unstable; urgency=medium
+
+  * [f9f5892] Set multi-arch:foreign for arch:all packages
+  * [78ba820] New upstream version 23.03+dfsg
+  * [3c3e613] Bump libzen-dev build-dep to 0.4.41
+  * [a039feb] Bump libzen-dev dep in libmediainfo-dev to 0.4.41
+  * [8c45c0f] Add autopkgtest
+
+ -- Chow Loong Jin <hyperair@debian.org>  Mon, 17 Apr 2023 12:11:14 +0800
+
+libmediainfo (22.12+dfsg-1) unstable; urgency=medium
+
+  * [2089cf4] New upstream version 22.12+dfsg
+  * [6cc449e] Refresh patches
+  * [4ada6dd] Bump libzen-dev build-dep
+
+ -- Chow Loong Jin <hyperair@debian.org>  Tue, 27 Dec 2022 13:06:58 +0800
+
+libmediainfo (22.09+dfsg-1) unstable; urgency=medium
+
+  * [57800e7] New upstream version 22.09+dfsg
+
+ -- Chow Loong Jin <hyperair@debian.org>  Sat, 08 Oct 2022 17:49:57 +0800
+
+libmediainfo (22.06+dfsg-1) unstable; urgency=medium
+
+  * [053fe2f] New upstream version 22.06+dfsg
+
+ -- Chow Loong Jin <hyperair@debian.org>  Sun, 26 Jun 2022 00:06:52 +0800
+
+libmediainfo (22.03+dfsg-1) unstable; urgency=medium
+
+  * [8016369] New upstream version 22.03+dfsg
+  * [8751ba9] Drop upstreamed patch and refresh remaining
+
+ -- Chow Loong Jin <hyperair@debian.org>  Sun, 03 Apr 2022 20:15:58 +0800
+
 libmediainfo (21.09+dfsg-4) unstable; urgency=medium
 
   * [9e882b3] Fix visibility being disabled on ppc64 (Closes: #825038)
