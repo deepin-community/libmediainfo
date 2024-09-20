@@ -1,3 +1,9 @@
+libmediainfo (23.10+dfsg-1deepin0) unstable; urgency=medium
+
+  * No source change upload against GCC 12.
+
+ -- Tianyu Chen <sweetyfish@deepin.org>  Fri, 20 Sep 2024 14:12:50 +0800
+
 libmediainfo (23.10+dfsg-1) unstable; urgency=medium
 
   * [c66c7dc] New upstream version 23.10+dfsg
