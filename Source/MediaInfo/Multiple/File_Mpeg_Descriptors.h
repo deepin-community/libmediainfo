@@ -746,6 +746,7 @@ private :
     void Descriptor_36() {Skip_XX(Element_Size, "Data");};
     void Descriptor_37() {Skip_XX(Element_Size, "Data");};
     void Descriptor_38();
+    void Descriptor_39();
     void Descriptor_3F();
     void Descriptor_3F_00() {Skip_XX(Element_Size-Element_Offset, "Data");};
     void Descriptor_3F_01() {Skip_XX(Element_Size-Element_Offset, "Data");};
@@ -864,8 +865,8 @@ private :
 
     //Helpers
     void ATSC_multiple_string_structure(Ztring &Value, const char* Info);
-    void Get_DVB_Text(int64u Size, Ztring &Value, const char* Info);
-    void Skip_DVB_Text(int64u Size, const char* Info) {Ztring Temp; Get_DVB_Text(Size, Temp, Info);};
+    void Get_DVB_Text(int64u Size, int32u LanguageCode, Ztring &Value, const char* Info);
+    void Skip_DVB_Text(int64u Size, int32u LanguageCode, const char* Info) {Ztring Temp; Get_DVB_Text(Size, LanguageCode, Temp, Info);};
     static Ztring TimeHHMM_BCD(int16u Time);
     static Ztring Frequency_DVB__BCD(int32u Frequency);
     static Ztring OrbitalPosition_DVB__BCD(int32u OrbitalPosition);

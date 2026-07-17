@@ -40,6 +40,9 @@
 #if defined(MEDIAINFO_AVC_YES)
     #include "MediaInfo/Video/File_Avc.h"
 #endif
+#if defined(MEDIAINFO_AVS3V_YES)
+    #include "MediaInfo/Video/File_Avs3V.h"
+#endif
 #if defined(MEDIAINFO_DVDIF_YES)
     #include "MediaInfo/Multiple/File_DvDif.h"
 #endif
@@ -1287,6 +1290,20 @@ void File_Mk::Streams_Finish()
             if (Temp->second.StreamKind==Stream_Video && !Codec_Temp.empty())
                 Fill(StreamKind_Last, StreamPos_Last, Fill_Parameter(StreamKind_Last, Generic_Codec), Codec_Temp, true);
 
+            //BlockAdditions
+            for (auto Add=Temp->second.BlockAdditions.begin(); Add!=Temp->second.BlockAdditions.end(); ++Add)
+            {
+                auto StreamKind_Last_Sav=StreamKind_Last;
+                auto StreamPos_Last_Sav=StreamPos_Last;
+                Merge(*Add->second);
+                if (StreamKind_Last!=StreamKind_Last_Sav || StreamPos_Last!=StreamPos_Last_Sav)
+                {
+                    Fill(StreamKind_Last, StreamPos_Last, Other_ID, to_string(Temp->first)+"-Add-"+to_string(Add->first));
+                    Fill(StreamKind_Last, StreamPos_Last, Other_MuxingMode, "BlockAddition");
+                    StreamKind_Last=StreamKind_Last_Sav;
+                    StreamPos_Last=StreamPos_Last_Sav;
+                }
+            }
 
             //Format specific
             #if defined(MEDIAINFO_DVDIF_YES)
@@ -1425,7 +1442,7 @@ void File_Mk::Read_Buffer_Unsynched()
     if (!File_GoTo)
         Element_Level=0;
 
-    for (std::map<int64u, stream>::iterator streamItem=Stream.begin(); streamItem!=Stream.end(); streamItem++)
+    for (std::map<int64u, stream>::iterator streamItem=Stream.begin(); streamItem!=Stream.end(); ++streamItem)
     {
         if (!File_GoTo)
             streamItem->second.PacketCount=0;
@@ -1640,7 +1657,7 @@ void File_Mk::Header_Parse()
     {
         Param_Error("TRUNCATED-ELEMENT:1");
         if (Element_Level<=2)
-            Fill(Stream_General, 0, "IsTruncated", "Yes");
+            IsTruncated(File_Offset+Buffer_Offset+Element_Offset+Size, true, "Matroska");
     }
 
     //Should we parse Cluster?
@@ -3137,12 +3154,12 @@ void File_Mk::Segment_Info_DateUTC()
 {
     //Parsing
     int64u Data;
-    Get_B8(Data,                                                "Data"); Element_Info1(Data/1000000000+978307200); //From Beginning of the millenium, in nanoseconds
+    Get_B8(Data,                                                "Data"); Element_Info1((int64s)Data/1000000000+978307200); //From Beginning of the millenium, in nanoseconds
 
     FILLING_BEGIN();
         if (Segment_Info_Count>1)
             return; //First element has the priority
-        Ztring Time=Ztring().Date_From_Seconds_1970((int32u)(Data/1000000000+978307200)); //978307200s between beginning of the millenium and 1970
+        Ztring Time=Ztring().Date_From_Seconds_1970((int32u)((int64s)Data/1000000000+978307200)); //978307200s between beginning of the millenium and 1970
         if (!Time.empty())
         {
             Time.FindAndReplace(__T("UTC "), __T(""));
@@ -3571,6 +3588,7 @@ void File_Mk::Segment_Tracks_TrackEntry_BlockAdditionMapping_Manage()
             {
             auto Temp=new File_Gxf_TimeCode();
             Temp->IsBigEndian=true;
+            Temp->IsTimeCodeTrack=true;
             Parser=Temp;
             }
             #endif
@@ -4799,6 +4817,12 @@ void File_Mk::CodecID_Manage()
         }
     }
     #endif
+    #if defined(MEDIAINFO_AVS3V_YES)
+    else if (Format==__T("AVS3 Video"))
+    {
+        streamItem.Parser=new File_Avs3V;
+    }
+    #endif
     #if defined(MEDIAINFO_HUFFYUV_YES)
     else if (Format==__T("DV"))
     {
@@ -5346,7 +5370,7 @@ void File_Mk::sei_message_user_data_registered_itu_t_t35_B5_003C_0001_04()
     Get_B1 (application_version,                                "application_version");
     if (application_version<=1)
     {
-        int32u targeted_system_display_maximum_luminance, maxscl[4], distribution_maxrgb_percentiles[16];
+        int32u targeted_system_display_maximum_luminance, maxscl[4]{}, distribution_maxrgb_percentiles[16];
         int16u fraction_bright_pixels;
         int8u num_distribution_maxrgb_percentiles, distribution_maxrgb_percentages[16], num_windows, num_bezier_curve_anchors;
         bool targeted_system_display_actual_peak_luminance_flag, mastering_display_actual_peak_luminance_flag, color_saturation_mapping_flag;

@@ -119,5 +119,6 @@ libmediainfo.so.0 libmediainfo0v5 #MINVER#
  (c++)"MediaInfoLib::MediaInfo::MediaInfo()@Base" 0.7.52
  (c++)"MediaInfoLib::MediaInfo::~MediaInfo()@Base" 0.7.52
  (optional|c++|regex)"^(std|__gnu_cxx)::" 0.7.52
+ (optional|c++|regex)"^(vtable|guard variable|typeinfo|typeinfo name) for (std|__gnu_cxx)::" 25.03
  (optional|c++|regex)"^(bool|void|MediaInfoLib::File_Mxf::indextable\*|(unsigned )?(int|short|(long )?long)\*) (std|__gnu_cxx)::" 0.7.52
  (optional|c++|regex)"^unsigned (int|long long)& std::vector<unsigned (int|long long), std::allocator<unsigned (int|long long)> >::emplace_back<unsigned (int|long long)>\(unsigned (int|long long)&&\)@Base$" 21.09

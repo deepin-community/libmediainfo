@@ -129,6 +129,7 @@
 #if defined(MEDIAINFO_EBUCORE_YES)
     #include "MediaInfo/Export/Export_EbuCore.h"
 #endif //defined(MEDIAINFO_EBUCORE_YES)
+#include <limits>
 using namespace ZenLib;
 using namespace std;
 //---------------------------------------------------------------------------
@@ -137,7 +138,7 @@ namespace MediaInfoLib
 {
 
 //---------------------------------------------------------------------------
-const Char*  MediaInfo_Version=__T("MediaInfoLib - v23.10");
+const Char*  MediaInfo_Version=__T("MediaInfoLib - v25.04");
 const Char*  MediaInfo_Url=__T("http://MediaArea.net/MediaInfo");
       Ztring EmptyZtring;       //Use it when we can't return a reference to a true Ztring
 const Ztring EmptyZtring_Const; //Use it when we can't return a reference to a true Ztring, const version
@@ -483,6 +484,7 @@ void MediaInfo_Config::Init(bool Force)
     ThousandsPoint=Ztring();
     CarriageReturnReplace=__T(" / ");
     #if MEDIAINFO_ADVANCED
+        Conformance_Limit=32;
         Collection_Trigger=-2;
         Collection_Display=display_if::Needed;
     #endif
@@ -1049,7 +1051,17 @@ Ztring MediaInfo_Config::Option (const String &Option, const String &Value_Raw)
         {
             return Cover_Data_Get();
         }
-    #endif //MEDIAINFO_COMPRESS
+    #endif //MEDIAINFO_ADVANCED
+    #if MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
+        if (Option_Lower==__T("enable_ffmpeg"))
+        {
+            return Enable_FFmpeg_Set(Value.To_int8u()?true:false);
+        }
+        if (Option_Lower==__T("enable_ffmpeg_get"))
+        {
+            return Enable_FFmpeg_Get()?__T("1"):__T("0");
+        }
+    #endif //MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
     #if MEDIAINFO_COMPRESS
         if (Option_Lower==__T("inform_compress"))
         {
@@ -1445,6 +1457,15 @@ Ztring MediaInfo_Config::Option (const String &Option, const String &Value_Raw)
         CustomMapping_Set(Value);
         return Ztring();
     }
+    if (Option_Lower==__T("conformance_limit"))
+    {
+        #if MEDIAINFO_CONFORMANCE
+            Conformance_Limit_Set(Value);
+            return Ztring();
+        #else // MEDIAINFO_CONFORMANCE
+            return __T("advanced features are disabled due to compilation options");
+        #endif // MEDIAINFO_CONFORMANCE
+    }
     if (Option_Lower==__T("collection_trigger"))
     {
         #if MEDIAINFO_ADVANCED
@@ -1663,7 +1684,6 @@ Ztring MediaInfo_Config::Option (const String &Option, const String &Value_Raw)
             return __T("conformance features are disabled due to compilation options");
         #endif // MEDIAINFO_CONFORMANCE
     }
-
     if (Option_Lower==__T("info_canhandleurls"))
     {
         #if defined(MEDIAINFO_LIBCURL_YES)
@@ -2700,6 +2720,31 @@ Ztring MediaInfo_Config::Cover_Data_Get ()
 }
 #endif //MEDIAINFO_ADVANCED
 
+
+//---------------------------------------------------------------------------
+#if MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
+Ztring MediaInfo_Config::Enable_FFmpeg_Set (bool NewValue)
+{
+    const int64u Mask=~((1<<Flags_Enable_FFmpeg));
+    int64u Value;
+    if (NewValue)
+        Value=(1<<Flags_Enable_FFmpeg);
+    else
+        Value=0;
+
+    CriticalSectionLocker CSL(CS);
+    Flags1&=Mask;
+    Flags1|=Value;
+    return Ztring();
+}
+
+bool MediaInfo_Config::Enable_FFmpeg_Get ()
+{
+    CriticalSectionLocker CSL(CS);
+    return Flags1&(1<<Flags_Enable_FFmpeg);
+}
+#endif //MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
+
 //---------------------------------------------------------------------------
 #if MEDIAINFO_COMPRESS
 Ztring MediaInfo_Config::Inform_Compress_Set (const Ztring &NewValue_)
@@ -2851,7 +2896,7 @@ const Ztring &MediaInfo_Config::Codec_Get (const Ztring &Value, infocodec_t Kind
 //---------------------------------------------------------------------------
 const Ztring &MediaInfo_Config::CodecID_Get (stream_t KindOfStream, infocodecid_format_t Format, const Ztring &Value, infocodecid_t KindOfCodecIDInfo)
 {
-    if (Format>=InfoCodecID_Format_Max || KindOfStream>=Stream_Max)
+    if (Format>=InfoCodecID_Format_Max || Format<0 || KindOfStream>=Stream_Max || KindOfStream<0)
         return EmptyString_Get();
     {
     CriticalSectionLocker CSL(CS);
@@ -2912,7 +2957,7 @@ const Ztring &MediaInfo_Config::CodecID_Get (stream_t KindOfStream, infocodecid_
 //---------------------------------------------------------------------------
 const Ztring &MediaInfo_Config::Library_Get (infolibrary_format_t Format, const Ztring &Value, infolibrary_t KindOfLibraryInfo)
 {
-    if (Format>=InfoLibrary_Format_Max)
+    if (Format>=InfoLibrary_Format_Max || Format<0)
         return EmptyString_Get();
     {
     CriticalSectionLocker CSL(CS);
@@ -2994,7 +3039,7 @@ const Ztring MediaInfo_Config::Iso639_Translate (const Ztring &Value)
 void MediaInfo_Config::Language_Set_Internal(stream_t KindOfStream)
 {
     //Loading codec table if not yet done
-    if (Info[KindOfStream].empty())
+    if (KindOfStream>=0 && KindOfStream<Stream_Max && Info[KindOfStream].empty())
         switch (KindOfStream)
         {
             case Stream_General :   MediaInfo_Config_General(Info[Stream_General]);   Language_Set(Stream_General); break;
@@ -3012,7 +3057,7 @@ void MediaInfo_Config::Language_Set_Internal(stream_t KindOfStream)
 const Ztring &MediaInfo_Config::Info_Get (stream_t KindOfStream, const Ztring &Value, info_t KindOfInfo)
 {
     Language_Set_All(KindOfStream);
-    if (KindOfStream>=Stream_Max)
+    if (KindOfStream<0 || KindOfStream>=Stream_Max)
         return EmptyString_Get();
     size_t Pos=Info[KindOfStream].Find(Value);
     if (Pos==Error || (size_t)KindOfInfo>=Info[KindOfStream][Pos].size())
@@ -3024,7 +3069,7 @@ const Ztring &MediaInfo_Config::Info_Get (stream_t KindOfStream, size_t Pos, inf
 {
     Language_Set_All(KindOfStream);
 
-    if (KindOfStream>=Stream_Max)
+    if (KindOfStream<0 || KindOfStream>=Stream_Max)
         return EmptyString_Get();
     if (Pos>=Info[KindOfStream].size() || (size_t)KindOfInfo>=Info[KindOfStream][Pos].size())
         return EmptyString_Get();
@@ -3033,7 +3078,7 @@ const Ztring &MediaInfo_Config::Info_Get (stream_t KindOfStream, size_t Pos, inf
 
 const ZtringListList &MediaInfo_Config::Info_Get(stream_t KindOfStream)
 {
-    if (KindOfStream>=Stream_Max)
+    if (KindOfStream<0 || KindOfStream>=Stream_Max)
         return EmptyStringListList_Get();
 
     Language_Set_All(KindOfStream);
@@ -3501,6 +3546,35 @@ ZtringListList MediaInfo_Config::SubFile_Config_Get ()
 //***************************************************************************
 // Collections
 //***************************************************************************
+
+//---------------------------------------------------------------------------
+#if MEDIAINFO_CONFORMANCE
+Ztring MediaInfo_Config::Conformance_Limit_Set(const Ztring& Value)
+{
+    int64s ValueI;
+    auto Value_Lower(Value);
+    transform(Value_Lower.begin(), Value_Lower.end(), Value_Lower.begin(), (int(*)(int))tolower); //(int(*)(int)) is a patch for unix
+    if (Value_Lower==__T("inf"))
+        ValueI=-1;
+    else
+    {
+        ValueI=-Value.To_int64s();
+        if ((!ValueI && Value != __T("0")) || ValueI>numeric_limits<int64s>::max())
+            return __T("Invalid Conformance_Limit value");
+    }
+
+    CriticalSectionLocker CSL(CS);
+    Conformance_Limit=(int64u)ValueI;
+    return {};
+}
+
+int64u MediaInfo_Config::Conformance_Limit_Get()
+{
+    CriticalSectionLocker CSL(CS);
+
+    return Conformance_Limit;
+}
+#endif // MEDIAINFO_CONFORMANCE
 
 //---------------------------------------------------------------------------
 #if MEDIAINFO_ADVANCED

@@ -40,6 +40,21 @@ template <class T> inline Ztring Get_Hex_ID(const T& Value)
     return ID_String;
 }
 
+template <class T> inline T IsAsciiLower(T Value)
+{
+    return ((unsigned)Value - 'a') < 26;
+}
+
+template <class T> inline T IsAsciiUpper(T Value)
+{
+    return ((unsigned)Value - 'A') < 26;
+}
+
+template <class T> inline T IsAsciiDigit(T Value)
+{
+    return ((unsigned)Value - '0') < 10;
+}
+
 struct buffer_data
 {
     size_t Size;
@@ -74,6 +89,13 @@ static inline int8u ReverseBits(int8u c)
 }
 
 string uint128toString(uint128 Value, int radix);
+
+enum conformance_type {
+    Conformance_Error,
+    Conformance_Warning,
+    Conformance_Information,
+    Conformance_Max,
+};
 
 #if !MEDIAINFO_TRACE
     #include "MediaInfo/File__Analyze_MinimizeSize.h"
@@ -250,6 +272,7 @@ public :
     int64u Field_Count_InThisBlock;
     int64u Frame_Count_NotParsedIncluded;
     int64u FrameNumber_PresentationOrder;
+    bool   FrameIsAlwaysComplete;
     bool   Synched;                    //Data is synched
     bool   UnSynched_IsNotJunk;        //Data is actually synched
     bool   MustExtendParsingDuration;  //Data has some substreams difficult to detect (e.g. captions), must wait a bit before final filling
@@ -850,6 +873,7 @@ public :
     void Get_ISO_8859_1(int64u Bytes, Ztring   &Info, const char* Name);
     void Get_ISO_8859_2(int64u Bytes, Ztring   &Info, const char* Name);
     void Get_ISO_8859_5(int64u Bytes, Ztring   &Info, const char* Name);
+    void Get_ISO_8859_9(int64u Bytes, Ztring   &Info, const char* Name);
     void Get_MacRoman(int64u Bytes, Ztring& Info, const char* Name);
     void Get_String (int64u Bytes, std::string &Info, const char* Name);
     void Get_UTF8   (int64u Bytes, Ztring      &Info, const char* Name);
@@ -860,6 +884,7 @@ public :
     void Peek_String(int64u Bytes, std::string &Info);
     void Skip_Local (int64u Bytes,                    const char* Name);
     void Skip_ISO_6937_2(int64u Bytes,                const char* Name);
+    void Skip_ISO_8859_1(int64u Bytes,                const char* Name);
     void Skip_String(int64u Bytes,                    const char* Name);
     void Skip_UTF8  (int64u Bytes,                    const char* Name);
     void Skip_UTF16B(int64u Bytes,                    const char* Name);
@@ -869,6 +894,7 @@ public :
     #define Info_UTF8(_BYTES, _INFO, _NAME)   Ztring _INFO; Get_UTF8  (_BYTES, _INFO, _NAME)
     #define Info_UTF16B(_BYTES, _INFO, _NAME) Ztring _INFO; Get_UTF16B(_BYTES, _INFO, _NAME)
     #define Info_UTF16L(_BYTES, _INFO, _NAME) Ztring _INFO; Get_UTF16L(_BYTES, _INFO, _NAME)
+    size_t SizeUpTo0(size_t Size=(size_t)-1);
 
     //***************************************************************************
     // PAscal strings
@@ -883,9 +909,9 @@ public :
     // Others, specialized
     //***************************************************************************
 
-    #if defined(MEDIAINFO_AV1_YES) || defined(MEDIAINFO_AVC_YES) || defined(MEDIAINFO_HEVC_YES) || defined(MEDIAINFO_MPEG4_YES) || defined(MEDIAINFO_MPEGTS_YES)
+    #if defined(MEDIAINFO_AV1_YES) || defined(MEDIAINFO_AVC_YES) || defined(MEDIAINFO_HEVC_YES) || defined(MEDIAINFO_MPEG4_YES) || defined(MEDIAINFO_MPEGTS_YES) || defined(MEDIAINFO_PNG_YES)
     void Get_MasteringDisplayColorVolume(Ztring& MasteringDisplay_ColorPrimaries, Ztring& MasteringDisplay_Luminance, bool FromAV1=false);
-    void Get_LightLevel(Ztring &MaxCLL, Ztring &MaxFALL);
+    void Get_LightLevel(Ztring &MaxCLL, Ztring &MaxFALL, int32u Divisor=1);
     #endif
     #if defined(MEDIAINFO_AV1_YES) || defined(MEDIAINFO_AVC_YES) || defined(MEDIAINFO_HEVC_YES) || defined(MEDIAINFO_MPEG4_YES) || defined(MEDIAINFO_MATROSKA_YES) || defined(MEDIAINFO_MXF_YES) || defined(MEDIAINFO_MPEGTS_YES)
     struct mastering_metadata_2086
@@ -1358,6 +1384,7 @@ protected :
     friend class File__Tags_Helper;
     friend class File_Usac;
     friend class File_Mk;
+    friend class File_Riff;
     friend class File_Mpeg4;
     friend class File_Hevc;
 
@@ -1468,18 +1495,6 @@ public :
     bool MustSynchronize;
     bool CA_system_ID_MustSkipSlices;
     bool FillAllMergedStreams;
-    class streamidentity
-    {
-    public:
-        stream_t StreamKind;
-        size_t   StreamPos;
-
-        streamidentity(stream_t StreamKind_, size_t StreamPos_)
-            : StreamKind(StreamKind_)
-            , StreamPos(StreamPos_)
-        {}
-    };
-    std::vector<streamidentity> MergedStreams_Last;
 
     //Demux
     enum contenttype
@@ -1523,6 +1538,29 @@ public :
         int64u              Hash_Offset;
         int64u              Hash_ParseUpTo;
     #endif //MEDIAINFO_HASH
+
+    #if MEDIAINFO_CONFORMANCE
+        void*               Conformance_Data;
+        void                Fill_Conformance(const char* Field, const char* Value, uint8_t Flags = {}, conformance_type Level = Conformance_Error, stream_t StreamKind = Stream_General, size_t StreamPos = 0);
+        void                Fill_Conformance(const char* Field, const string& Value, uint8_t Flags = {}, conformance_type Level = Conformance_Error) { Fill_Conformance(Field, Value.c_str(), Flags, Level); }
+        void                Clear_Conformance();
+        void                Merge_Conformance(bool FromConfig = false);
+        void                Streams_Finish_Conformance();
+        virtual string      CreateElementName();
+        void                IsTruncated(int64u ExpectedSize = (int64u)-1, bool MoreThan = false, const char* Prefix = nullptr);
+        void                RanOutOfData(const char* Prefix = nullptr);
+        void                SynchLost(const char* Prefix = nullptr);
+    #else //MEDIAINFO_CONFORMANCE
+        void                Fill_Conformance(const char* Field, const char* Value, uint8_t Flags = {}, conformance_type Level = Conformance_Error, stream_t StreamKind = Stream_General, size_t StreamPos = 0) {}
+        void                Fill_Conformance(const char* Field, const string& Value, uint8_t Flags = {}, conformance_type Level = Conformance_Error) { Fill_Conformance(Field, Value.c_str(), Flags, Level); }
+        void                Clear_Conformance() {}
+        void                Merge_Conformance(bool FromConfig = false) {}
+        void                Streams_Finish_Conformance() {}
+        string              CreateElementName() { return {}; }
+        void                IsTruncated(int64u ExpectedSize = (int64u)-1, bool MoreThan = false, const char* = nullptr) {}
+        void                RanOutOfData(const char* = nullptr) { Trusted_IsNot(); }
+        void                SynchLost(const char* = nullptr) { Trusted_IsNot(); }
+    #endif //MEDIAINFO_CONFORMANCE
 
     #if MEDIAINFO_SEEK
     private:

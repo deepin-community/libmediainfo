@@ -140,6 +140,9 @@
         <CppCompile Include="..\..\..\Source\MediaInfo\Archive\File_Mz.cpp">
             <BuildOrder>137</BuildOrder>
         </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Archive\File_MachO.cpp">
+            <BuildOrder>241</BuildOrder>
+        </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Archive\File_Rar.cpp">
             <BuildOrder>158</BuildOrder>
         </CppCompile>
@@ -202,6 +205,9 @@
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Audio\File_ChannelGrouping.cpp">
             <BuildOrder>81</BuildOrder>
+        </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Audio\File_Dat.cpp">
+            <BuildOrder>243</BuildOrder>
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Audio\File_DolbyE.cpp">
             <BuildOrder>86</BuildOrder>
@@ -438,6 +444,9 @@
         <CppCompile Include="..\..\..\Source\MediaInfo\Image\File_Tiff.cpp">
             <BuildOrder>177</BuildOrder>
         </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Image\File_WebP.cpp">
+            <BuildOrder>240</BuildOrder>
+        </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\MediaInfo.cpp">
             <DependentOn>..\..\..\Source\MediaInfo\MediaInfo.h</DependentOn>
             <BuildOrder>192</BuildOrder>
@@ -652,6 +661,9 @@
         <CppCompile Include="..\..\..\Source\MediaInfo\OutputHelpers.cpp">
             <BuildOrder>222</BuildOrder>
         </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\ExternalCommandHelpers.cpp">
+            <BuildOrder>235</BuildOrder>
+        </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\PreComp.cpp">
             <BuildOrder>196</BuildOrder>
         </CppCompile>
@@ -673,6 +685,9 @@
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Tag\File_ApeTag.cpp">
             <BuildOrder>69</BuildOrder>
+        </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Tag\File_Icc.cpp">
+            <BuildOrder>241</BuildOrder>
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Tag\File_Id3.cpp">
             <BuildOrder>115</BuildOrder>
@@ -727,6 +742,9 @@
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Text\File_OtherText.cpp">
             <BuildOrder>145</BuildOrder>
+        </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Text\File_Pac.cpp">
+            <BuildOrder>243</BuildOrder>
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Text\File_Pdf.cpp">
             <BuildOrder>150</BuildOrder>
@@ -797,6 +815,9 @@
         <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_H263.cpp">
             <BuildOrder>108</BuildOrder>
         </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_HdrVividMetadata.cpp">
+            <BuildOrder>245</BuildOrder>
+        </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_Hevc.cpp">
             <BuildOrder>24</BuildOrder>
         </CppCompile>
@@ -829,6 +850,9 @@
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_Vp9.cpp">
             <BuildOrder>236</BuildOrder>
+        </CppCompile>
+        <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_Vvc.cpp">
+            <BuildOrder>242</BuildOrder>
         </CppCompile>
         <CppCompile Include="..\..\..\Source\MediaInfo\Video\File_Y4m.cpp">
             <BuildOrder>190</BuildOrder>

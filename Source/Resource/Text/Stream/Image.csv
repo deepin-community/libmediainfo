@@ -25,12 +25,21 @@ Format_Commercial;;;N NT;;;Commercial name used by vendor for these settings or 
 Format_Commercial_IfAny;;;Y YTY;;;Commercial name used by vendor for these settings, if available
 Format_Version;;;Y NTY;;;Version for the identified format
 Format_Profile;;;Y NTY;;;Profile of the Format
+Format_Compression;;;Y YTY;;;Compression method used
+Format_AdditionalFeatures;;;N YTY;;;Format features needed for fully supporting the content
+HDR_Format;;;N YTY;;;High Dynamic Range Format used
+HDR_Format/String;;;Y NT;;;HDR Format used, along with version, profile, level, layers, settings, and compatibility information
+HDR_Format_Commercial;;;N YT;;;Commercial name used by vendor for these HDR settings or HDR Format field if there is no difference
+HDR_Format_Version;;;N YTY;;;Version of HDR Format
+HDR_Format_Profile;;;N YTY;;;Profile of HDR Format
+HDR_Format_Level;;;N YTY;;;Level of HDR Format
+HDR_Format_Settings;;;N YTY;;;HDR Format settings
+HDR_Format_Compatibility;;;N YTY;;;HDR Format compatibility with commercial products (e.g. HDR10)
+Format_Settings;;;Y NT;;;Settings used and required by decoder
 Format_Settings_Endianness;;;N YTY;;;Order of bytes required for decoding. Options are Big/Little
 Format_Settings_Packing;;;N YTY;;;Data packing method used in DPX frames (e.g. Packed, Filled A, Filled B)
-Format_Compression;;;Y YTY;;;Compression method used
-Format_Settings;;;Y NT;;;Settings used and required by decoder
 Format_Settings_Wrapping;;;Y YTY;;;Wrapping mode set for format (e.g. Frame, Clip)
-Format_AdditionalFeatures;;;N YTY;;;Format features needed for fully supporting the content
+MuxingMode;;;Y YTY;;;How this file is muxed in the container (e.g. Muxed in Video #1)
 InternetMediaType;;;N YT;;;Internet Media Type (aka MIME Type, Content-Type)
 CodecID;;;Y YTY;;;Codec identifier as indicated by the container
 CodecID/String;;;Y NT;;;Codec identifier, as indicated by the container
@@ -63,6 +72,12 @@ DisplayAspectRatio;;;N YFY;;;The proportional relationship between the width and
 DisplayAspectRatio/String;;;Y NT;;;The proportional relationship between the width and height of a frame (e.g. 4:3)
 DisplayAspectRatio_Original;;;N YFY;;;The proportional relationship between the width and height of a frame (e.g. 4:3)
 DisplayAspectRatio_Original/String;;;Y NT;;;The proportional relationship between the width and height of a frame (e.g. 4:3)
+Active_Width;; pixel;N YIY;;;Width of frame, not considering black bars
+Active_Width/String;;;Y NT;;;Width of frame, not considering black bars, in pixels, presented in SI unit digit spacing style, with measurement (e.g. 1 920 pixels)
+Active_Height;; pixel;N YIY;;;Height of frame, not considering black bars
+Active_Height/String;;;Y NT;;;Height of frame, not considering black bars, in pixels, presented in SI unit digit spacing style, with measurement (e.g. 1 080 pixels)
+Active_DisplayAspectRatio;;;N YFY;;;The proportional relationship between the active width and active height of a frame (e.g. 4:3)
+Active_DisplayAspectRatio/String;;;Y NT;;;The proportional relationship between the active width and active height of a frame (e.g. 4:3)
 ColorSpace;;;Y YTY;;;Color profile of the image (e.g. YUV)
 ChromaSubsampling;;;Y YTY;;;Ratio of chroma to luma in encoded image (e.g. 4:2:2)
 Resolution;; bit;N NI;;;Deprecated, do not use in new projects
@@ -115,10 +130,38 @@ Encoded_Date;;;Y YTY;;;Time that the encoding of this item was completed, in UTC
 Tagged_Date;;;Y YTY;;;Time that the tags were added to this item, in UTC;;Temporal
 Encryption;;;Y YTY;;;Whether this stream is encrypted and, if available, how it is encrypted
 colour_description_present;;;N YTY;;;Presence of color description (Yes, No)
+colour_description_present_Source;;;N YTY;;;Presence of colour description (source)
+colour_description_present_Original;;;N NTY;;;Presence of colour description (if incoherencies)
+colour_description_present_Original_Source;;;N NTY;;;Presence of colour description (source if incoherencies)
+colour_range;;;Y YTY;;;Color range for YUV color space
+colour_range_Source;;;N YTY;;;Colour range for YUV colour space (source)
+colour_range_Original;;;Y NTY;;;Colour range for YUV colour space (if incoherencies)
+colour_range_Original_Source;;;N NTY;;;Colour range for YUV colour space (source if incoherencies)
 colour_primaries;;;Y YTY;;;Chromaticity coordinates of the source primaries
+colour_primaries_Source;;;N YTY;;;Chromaticity coordinates of the source primaries (source)
+colour_primaries_Original;;;Y NTY;;;Chromaticity coordinates of the source primaries (if incoherencies)
+colour_primaries_Original_Source;;;N NTY;;;Chromaticity coordinates of the source primaries (source if incoherencies)
 transfer_characteristics;;;Y YTY;;;Opto-electronic transfer characteristic of the source picture
+transfer_characteristics_Source;;;N YTY;;;Opto-electronic transfer characteristic of the source picture (source)
+transfer_characteristics_Original;;;Y NTY;;;Opto-electronic transfer characteristic of the source picture (if incoherencies)
+transfer_characteristics_Original_Source;;;N NTY;;;Opto-electronic transfer characteristic of the source picture (source if incoherencies)
 matrix_coefficients;;;Y YTY;;;Matrix coefficients used in deriving luma and chroma signals from the green, blue, and red primaries
-colour_description_present_Original;;;N YTY;;;Presence of colour description (if incoherencies)
-colour_primaries_Original;;;Y YTY;;;Chromaticity coordinates of the source primaries (if incoherencies)
-transfer_characteristics_Original;;;Y YTY;;;Opto-electronic transfer characteristic of the source picture (if incoherencies)
-matrix_coefficients_Original;;;Y YTY;;;Matrix coefficients used in deriving luma and chroma signals from the green, blue, and red primaries (if incoherencies)
+matrix_coefficients_Source;;;N YTY;;;Matrix coefficients used in deriving luma and chroma signals from the green, blue, and red primaries (source)
+matrix_coefficients_Original;;;Y NTY;;;Matrix coefficients used in deriving luma and chroma signals from the green, blue, and red primaries (if incoherencies)
+matrix_coefficients_Original_Source;;;N NTY;;;Matrix coefficients used in deriving luma and chroma signals from the green, blue, and red primaries (source if incoherencies)
+MasteringDisplay_ColorPrimaries;;;Y YTY;;;Chromaticity coordinates of the source primaries of the mastering display
+MasteringDisplay_ColorPrimaries_Source;;;N YTY;;;Chromaticity coordinates of the source primaries of the mastering display (source)
+MasteringDisplay_ColorPrimaries_Original;;;Y NTY;;;Chromaticity coordinates of the source primaries of the mastering display (if incoherencies)
+MasteringDisplay_ColorPrimaries_Original_Source;;;N NTY;;;Chromaticity coordinates of the source primaries of the mastering display (source if incoherencies)
+MasteringDisplay_Luminance;;;Y YTY;;;Luminance of the mastering display
+MasteringDisplay_Luminance_Source;;;N YTY;;;Luminance of the mastering display (source)
+MasteringDisplay_Luminance_Original;;;Y NTY;;;Luminance of the mastering display (if incoherencies)
+MasteringDisplay_Luminance_Original_Source;;;N NTY;;;Luminance of the mastering display (source if incoherencies)
+MaxCLL;;;Y YTY;;;Maximum content light level
+MaxCLL_Source;;;N YTY;;;Maximum content light level (source)
+MaxCLL_Original;;;Y NTY;;;Maximum content light level (if incoherencies)
+MaxCLL_Original_Source;;;N NTY;;;Maximum content light level (source if incoherencies)
+MaxFALL;;;Y YTY;;;Maximum frame average light level
+MaxFALL_Source;;;N YTY;;;Maximum frame average light level (source)
+MaxFALL_Original;;;Y NTY;;;Maximum frame average light level (if incoherencies)
+MaxFALL_Original_Source;;;N NTY;;;Maximum frame average light level (source if incoherencies)

@@ -13,7 +13,7 @@ Build-Depends: debhelper-compat (= 12),
                libmms-dev,
                libglib2.0-dev,
                zlib1g-dev,
-               pkg-config
+               pkgconf
 Standards-Version: 4.4.1
 Section: libs
 Homepage: http://MediaArea.net/MediaInfo

@@ -50,19 +50,20 @@
 #include "MediaInfo/MediaInfo_Internal.h"
 #include "MediaInfo/File__Analyze.h"
 #include "ThirdParty/base64/base64.h"
-# if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
 #include "MediaInfo/OutputHelpers.h"
-#endif //MEDIAINFO_XML_YES || MEDIAINFO_JSON_YES
 
 //---------------------------------------------------------------------------
 #include <ctime>
+#include <regex>
+#if !defined(UNICODE) && !defined(_UNICODE)
+#include <codecvt>
+#endif
 //---------------------------------------------------------------------------
 
 namespace MediaInfoLib
 {
 
 //---------------------------------------------------------------------------
-#if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
 Ztring Xml_Name_Escape_0_7_78 (const Ztring &Name)
 {
     Ztring ToReturn(Name);
@@ -96,7 +97,23 @@ Ztring Xml_Name_Escape_0_7_78 (const Ztring &Name)
 
     return ToReturn;
 }
-#endif //defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
+
+//---------------------------------------------------------------------------
+std::wstring ToFullWidth(const std::wstring& input)
+{
+    std::wstring result;
+    for (wchar_t ch : input) {
+        if (ch >= 0x20 && ch <= 0x7E) {
+            if (ch == 0x20)
+                result += 0x3000;
+            else
+                result += ch + 0xFEE0;
+        }
+        else
+            result += ch;
+    }
+    return result;
+}
 
 //---------------------------------------------------------------------------
 std::string URL_Encoded_Encode(const std::string& URL);
@@ -436,7 +453,23 @@ Ztring MediaInfo_Internal::Inform()
     #endif //defined(MEDIAINFO_CSV_YES)
 
     if (HTML)
-        Retour+=__T("<html>\n\n<head>\n<META http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /></head>\n<body>\n");
+        Retour+=__T("<!DOCTYPE html>\n"
+            "<html>\n"
+            "  <head>\n"
+            "    <meta charset=\"utf-8\">\n"
+            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+            "    <title>MediaInfo</title>\n"
+            "    <style>\n"
+            "      :root { color-scheme: var(--color-scheme, light); }\n"
+            "      @media (prefers-color-scheme: dark) {\n"
+            "        :root { --color-scheme: dark; --border-color: blue; }\n"
+            "      }\n"
+            "      table { width: 100%; padding: 2px; border-spacing: 2px; border:1px solid var(--border-color, navy); margin-bottom: 18px; }\n"
+            "      td.Prefix { width: 25vw; min-width: 150px; max-width: 500px; font-style: italic; }\n"
+            "      h2 { margin-top: 0px; }\n"
+            "    </style>\n"
+            "  </head>\n"
+            "  <body>\n");
     #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
     if (XML_0_7_78_MA || XML_0_7_78_MI || JSON)
     {
@@ -469,7 +502,7 @@ Ztring MediaInfo_Internal::Inform()
         for (size_t StreamPos=0; StreamPos<(size_t)Count_Get((stream_t)StreamKind); StreamPos++)
         {
             //Pour chaque stream
-            if (HTML) Retour+=__T("<table width=\"100%\" border=\"0\" cellpadding=\"1\" cellspacing=\"2\" style=\"border:1px solid Navy\">\n<tr>\n    <td width=\"150\"><h2>");
+            if (HTML) Retour+=__T("    <table>\n      <tr>\n        <td colspan=\"2\"><h2>");
             #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
             Node* Node_Current=NULL;
             if (XML || XML_0_7_78_MA || XML_0_7_78_MI || JSON) Node_Current=Node_MI?Node_MI->Add_Child("track", true):Node_Main->Add_Child("track", true);
@@ -489,7 +522,7 @@ Ztring MediaInfo_Internal::Inform()
                 }
                 Retour+=A;
             }
-            if (HTML) Retour+=__T("</h2></td>\n  </tr>");
+            if (HTML) Retour+=__T("</h2></td>\n      </tr>");
             #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
             if (XML || XML_0_7_78_MA || XML_0_7_78_MI || JSON)
             {
@@ -511,12 +544,12 @@ Ztring MediaInfo_Internal::Inform()
                 Retour+=Inform((stream_t)StreamKind, StreamPos, false);
             }
 
-            if (HTML) Retour+=__T("</table>\n<br />");
+            if (HTML) Retour += __T("    </table>");
             if (!XML && !XML_0_7_78_MA && !XML_0_7_78_MI && !JSON) Retour+=MediaInfoLib::Config.LineSeparator_Get();
         }
     }
 
-    if (HTML) Retour+=__T("\n</body>\n</html>\n");
+    if (HTML) Retour+=__T("  </body>\n</html>\n");
 
     if (!CSV && !HTML && !XML && !XML_0_7_78_MA && !XML_0_7_78_MI && !JSON)
     {
@@ -619,13 +652,13 @@ Ztring MediaInfo_Internal::Inform()
 }
 
 //---------------------------------------------------------------------------
-#if defined(MEDIAINFO_TEXT_YES) || defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_CSV_YES) || defined(MEDIAINFO_CUSTOM_YES)
+#if defined(MEDIAINFO_TEXT_YES) || defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES) || defined(MEDIAINFO_CSV_YES) || defined(MEDIAINFO_CUSTOM_YES)
 #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
 namespace
 {
 struct nested
 {
-    std::vector<Node*>* Target;
+    std::vector<Node*>* Target{};
     Ztring Name;
 };
 }
@@ -668,7 +701,7 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
         #if defined(MEDIAINFO_CSV_YES)
         bool CSV=MediaInfoLib::Config.Inform_Get()==__T("CSV")?true:false;
         #endif //defined(MEDIAINFO_CSV_YES)
-        #if defined(MEDIAINFO_TEXT_YES) && (defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_CSV_YES))
+        #if defined(MEDIAINFO_TEXT_YES) && (defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES) || defined(MEDIAINFO_CSV_YES))
         bool Text=true;
         #if defined(MEDIAINFO_HTML_YES)
          if (HTML)
@@ -730,7 +763,7 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
                 if (Conformance_JSON)
                 {
                     Ztring Name=Get((stream_t)StreamKind, StreamPos, Champ_Pos, Info_Name);
-                    if (Name!=__T("Format") && Name.rfind(__T("Conformance"), 11))
+                    if (Name!=__T("StreamKind") && Name!=__T("Format") && Name!=__T("Metadata_Format") && Name.rfind(__T("Conformance"), 11))
                         Shouldshow=false; // Override, it is intended only for conformance checks
                 }
             #endif 
@@ -791,9 +824,9 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
                         size_t Space=SubName.rfind(' ');
                         if (Space!=(size_t)-1)
                             SubName.erase(0, Space+1);
-                        size_t NumbersPos=SubName.find_first_of("0123456789");
+                        size_t NumbersPos=SubName.find_last_not_of("0123456789");
                         if (NumbersPos!=(size_t)-1)
-                            SubName.resize(NumbersPos);
+                            SubName.resize(NumbersPos+1);
                         if (XML_0_7_78 || JSON)
                             SubName=Xml_Name_Escape_0_7_78(Ztring().From_UTF8(SubName)).To_UTF8();
                         else
@@ -819,7 +852,21 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
                      int8u Nom_Size=MediaInfoLib::Config.Language_Get(__T("  Config_Text_ColumnSize")).To_int8u();
                      if (Nom_Size==0)
                         Nom_Size=32; //Default
-                     Nom.resize(Nom_Size, ' ');
+                     Ztring lang = MediaInfoLib::Config.Language_Get(__T("  Language_ISO639"));
+                     if (!lang.compare(__T("ja")) || !lang.compare(__T("ko")) || !lang.compare(__T("zh-CN")) || !lang.compare(__T("zh-HK")) || !lang.compare(__T("zh-TW")))
+                     {
+                        #if !defined(UNICODE) && !defined(_UNICODE)
+                        std::wstring_convert<std::codecvt_utf8<wchar_t>> Converter;
+                        std::wstring Nom_Wide=Converter.from_bytes(Nom);
+                        Nom_Wide.resize(Nom_Size, ' ');
+                        Nom=Ztring().From_Unicode(ToFullWidth(Nom_Wide)); //Align Japanese, Korean and Chinese characters with ASCII characters
+                        #else
+                        Nom.resize(Nom_Size, ' ');
+                        Nom=ToFullWidth(Nom); //Align Japanese, Korean and Chinese characters with ASCII characters
+                        #endif
+                     }
+                     else
+                        Nom.resize(Nom_Size, ' ');
                 }
                 Ztring Valeur=Get((stream_t)StreamKind, StreamPos, Champ_Pos, Info_Text);
 
@@ -837,6 +884,26 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
                             Valeur.resize(Valeur.size()-3);
                     }
                 }
+
+                //Handling ISO-6709 location data for Text and HTML display
+                #if defined(MEDIAINFO_TEXT_YES) || defined(MEDIAINFO_HTML_YES)
+                bool TextOrHTML = false;
+                #if defined(MEDIAINFO_TEXT_YES) && (defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES) || defined(MEDIAINFO_CSV_YES))
+                if (Text) TextOrHTML = true;
+                #elif !(defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES) || defined(MEDIAINFO_CSV_YES))
+                TextOrHTML = true;
+                #endif // defined(MEDIAINFO_TEXT_YES) && (defined(MEDIAINFO_HTML_YES) || defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES) || defined(MEDIAINFO_CSV_YES))
+                #if defined(MEDIAINFO_HTML_YES)
+                if (HTML) TextOrHTML = true;
+                #endif // defined(MEDIAINFO_HTML_YES)
+                if ((TextOrHTML) && (Get(StreamKind, StreamPos, Champ_Pos, Info_Name) == __T("Recorded_Location"))) {
+                    std::string ISO6709{ Valeur.To_UTF8() };
+                    std::smatch match;
+                    std::regex pattern(R"(([-+]?(?:\d{2}|\d{4}|\d{6})(?:\.\d*)?)([-+](?:\d{3}|\d{5}|\d{7})(?:\.\d*)?)(?:([-+]\d+(?:\.\d*)?)(?:CRS(.+))?)?/)");
+                    if (std::regex_match(ISO6709, match, pattern))
+                        Valeur.From_UTF8(match[1].str() + " " + match[2].str() + " " + match[3].str() + " " + match[4].str());
+                }
+                #endif // defined(MEDIAINFO_TEXT_YES) || defined(MEDIAINFO_HTML_YES)
 
                 #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)
                     if ((XML_0_7_78 || JSON) && MediaInfoLib::Config.Info_Get(StreamKind).Read(Champ_Pos, Info_Measure)==__T(" ms"))
@@ -858,11 +925,15 @@ Ztring MediaInfo_Internal::Inform (stream_t StreamKind, size_t StreamPos, bool I
                     for (size_t Pos=0; Pos<Level; Pos++)
                         Prefix+=__T("&nbsp;");
 
-                    Retour+=__T("  <tr>\n    <td><i>");
+                    Retour+=__T("      <tr>\n        <td class=\"Prefix\">");
                     Retour+=Prefix+Nom.TrimLeft();
-                    Retour+=__T(" :</i></td>\n    <td colspan=\"3\">");
+                    Retour+=__T(" :</td>\n        <td>");
+                    Valeur.FindAndReplace(__T("&"), __T("&amp;"), 0, Ztring_Recursive);
+                    Valeur.FindAndReplace(__T("<"), __T("&lt;"), 0, Ztring_Recursive);
+                    Valeur.FindAndReplace(__T(">"), __T("&gt;"), 0, Ztring_Recursive);
+                    Valeur.FindAndReplace(__T("  "), __T(" &nbsp;"), 0, Ztring_Recursive);
                     Retour+=Valeur;
-                    Retour+=__T("</td>\n  </tr>");
+                    Retour+=__T("</td>\n      </tr>");
                 }
                 #endif //defined(MEDIAINFO_HTML_YES)
                 #if defined(MEDIAINFO_XML_YES) || defined(MEDIAINFO_JSON_YES)

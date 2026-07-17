@@ -32,6 +32,7 @@
 #include "MediaInfo/MediaInfo_Config_MediaInfo.h"
 #include "MediaInfo/MediaInfo_Internal.h"
 #include "MediaInfo/TimeCode.h"
+#include "MediaInfo/ExternalCommandHelpers.h"
 #if MEDIAINFO_IBI
     #include "MediaInfo/Multiple/File_Ibi.h"
 #endif //MEDIAINFO_IBI
@@ -50,6 +51,7 @@ namespace MediaInfoLib
 
 //---------------------------------------------------------------------------
 extern MediaInfo_Config Config;
+extern size_t DolbyVision_Compatibility_Pos(const Ztring& Value);
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
@@ -196,7 +198,14 @@ void Merge_FillTimeCode(File__Analyze& In, const string& Prefix, const TimeCode&
     
     In.Fill(Stream_Audio, 0, Prefix.c_str(), TC_Time.ToString(), true, true);
     In.Fill_SetOptions(Stream_Audio, 0, Prefix.c_str(), "N NTY");
-    In.Fill(Stream_Audio, 0, (Prefix+"/String").c_str(), TC_Time.ToString()+(TC_WithExtraSamples_String.empty()?string():(" ("+TC_WithExtraSamples_String+')')), true, true);
+    string ForDisplay;
+    if (Prefix=="Dolby_Atmos_Metadata FirstFrameOfAction")
+        ForDisplay=TC_Frames.ToString();
+    else if (Prefix.find(" Start")+6==Prefix.size() || Prefix.find(" End")+4==Prefix.size())
+        ForDisplay=TC_WithExtraSubFrames_String;
+    else
+        ForDisplay=TC_WithExtraSamples_String;
+    In.Fill(Stream_Audio, 0, (Prefix+"/String").c_str(), TC_Time.ToString()+(ForDisplay.empty()?string():(" ("+ForDisplay+')')), true, true);
     In.Fill_SetOptions(Stream_Audio, 0, (Prefix+"/String").c_str(), "Y NTN");
     In.Fill(Stream_Audio, 0, (Prefix+"/TimeCode").c_str(), TC_Frames.ToString(), true, true);
     if (TC_Frames.IsValid())
@@ -329,6 +338,103 @@ void File__Analyze::Streams_Finish_Global()
                 Fill(Stream_General, 0, General_Codec_Extensions, Extensions, true);
         }
     }
+
+    #if MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
+        // Cropped
+        if (Count_Get(Stream_Video)+Count_Get(Stream_Image) && MediaInfoLib::Config.Enable_FFmpeg_Get())
+        {
+            Ztring Command=External_Command_Exists(ffmpeg_PossibleNames);;
+            if (!Command.empty())
+            {
+                auto StreamKind=Count_Get(Stream_Video)?Stream_Video:Stream_Image;
+                {
+                    const auto StreamCount=Count_Get(StreamKind);
+                    for (size_t StreamPos=0; StreamPos<StreamCount; StreamPos++)
+                    {
+                        ZtringList Arguments;
+                        if (StreamKind==Stream_Video)
+                        {
+                            Arguments.push_back(__T("-noaccurate_seek"));
+                            Arguments.push_back(__T("-ss"));
+                            Arguments.push_back(Ztring::ToZtring(Retrieve_Const(Stream_Video, 0, Video_Duration).To_int64u()/2000));
+                        }
+                        Arguments.push_back(__T("-i"));
+                        Arguments.push_back(Retrieve_Const(Stream_General, 0, General_CompleteName));
+                        if (StreamKind==Stream_Video)
+                        {
+                            Arguments.push_back(__T("-map"));
+                            Arguments.push_back(__T("v:")+Ztring::ToZtring(StreamPos));
+                        }
+                        Arguments.push_back(__T("-vf"));
+                        Arguments.push_back(__T("cropdetect=skip=0:round=1"));
+                        if (StreamKind==Stream_Video)
+                        {
+                            Arguments.back().insert(0, __T("select='eq(pict_type,I)',"));
+                            Arguments.push_back(__T("-copyts"));
+                            Arguments.push_back(__T("-vframes"));
+                            Arguments.push_back(__T("4"));
+                        }
+                        Arguments.push_back(__T("-f"));
+                        Arguments.push_back(__T("null"));
+                        Arguments.push_back(__T("-"));
+                        Ztring Err;
+                        External_Command_Run(Command, Arguments, nullptr, &Err);
+                        auto Pos_Start=Err.rfind(__T("[Parsed_cropdetect_"));
+                        if (Pos_Start!=string::npos)
+                        {
+                            auto Pos_End=Err.find(__T('\n'), Pos_Start);
+                            if (Pos_End==string::npos)
+                                Pos_End=Err.size();
+                            Ztring Crop_Line=Err.substr(Pos_Start, Pos_End-Pos_Start);
+                            ZtringList Crop;
+                            Crop.Separator_Set(0, __T(" "));
+                            Crop.Write(Crop_Line);
+                            int32u Values[6];
+                            memset(Values, -1, sizeof(Values));
+                            int32u Width=Retrieve_Const(StreamKind, StreamPos, "Width").To_int32u();
+                            int32u Height=Retrieve_Const(StreamKind, StreamPos, "Height").To_int32u();
+                            for (const auto& Item : Crop)
+                            {
+                                if (Item.size()<=3
+                                 || Item[0]<__T('x') || Item[0]>__T('y')
+                                 || Item[1]<__T('1') || Item[1]>__T('2')
+                                 || Item[2]!=__T(':')
+                                 || Item[3]<__T('0') || Item[3]>__T('9'))
+                                    continue;
+                                Values[((Item[0]-__T('x'))<<1)|(Item[1]-__T('1'))]=Ztring(Item.substr(3)).To_int32u();
+                            }
+                            if (Values[0]!=(int32u)-1 && Values[1]!=(int32u)-1)
+                            {
+                                Values[4]=Values[1]-Values[0];
+                                if (((int32s)Values[4])>=0)
+                                {
+                                    Values[4]++;
+                                    if (Values[4]!=Width)
+                                        Fill(StreamKind, StreamPos, "Active_Width", Values[4]);
+                                }
+                            }
+                            if (Values[2]!=(int32u)-1 && Values[3]!=(int32u)-1)
+                            {
+                                Values[5]=Values[3]-=Values[2];
+                                if (((int32s)Values[5])>=0)
+                                {
+                                    Values[5]++;
+                                    if (Values[5]!=Height)
+                                        Fill(StreamKind, StreamPos, "Active_Height", Values[5]);
+                                }
+                            }
+                            if (((int32s)Values[4])>=0 && ((int32s)Values[5])>=0 && (Values[4]!=Width || Values[5]!=Height))
+                            {
+                                float32 PAR=Retrieve_Const(StreamKind, 0, "PixelAspectRatio").To_float32();
+                                if (PAR)
+                                    Fill(StreamKind, StreamPos, "Active_DisplayAspectRatio", ((float32)Values[4])/Values[5]*PAR, 2);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    #endif //MEDIAINFO_ADVANCED && defined(MEDIAINFO_FILE_YES)
 
     Streams_Finish_StreamOnly();
     Streams_Finish_StreamOnly();
@@ -777,7 +883,7 @@ void File__Analyze::Streams_Finish_StreamOnly(stream_t StreamKind, size_t Pos)
     }
 
     //Duration from Bitrate and StreamSize
-    if (StreamKind!=Stream_Other && Retrieve(StreamKind, Pos, Fill_Parameter(StreamKind, Generic_Duration)).empty() && !Retrieve(StreamKind, Pos, Fill_Parameter(StreamKind, Generic_StreamSize)).empty() && !Retrieve(StreamKind, Pos, "BitRate").empty() && Count_Get(Stream_Video)+Count_Get(Stream_Audio)>1) //If only one stream, duration will be copied later, useful for exact bitrate calculation //TODO: enable it aslo for 1 stream, after handling of incoherencies found during tests
+    if (StreamKind!=Stream_Other && Retrieve(StreamKind, Pos, Fill_Parameter(StreamKind, Generic_Duration)).empty() && !Retrieve(StreamKind, Pos, Fill_Parameter(StreamKind, Generic_StreamSize)).empty() && !Retrieve(StreamKind, Pos, "BitRate").empty())
     {
         int64u BitRate=Retrieve(StreamKind, Pos, "BitRate").To_int64u();
         int64u StreamSize=Retrieve(StreamKind, Pos, Fill_Parameter(StreamKind, Generic_StreamSize)).To_int64u();
@@ -825,7 +931,7 @@ void File__Analyze::Streams_Finish_StreamOnly(stream_t StreamKind, size_t Pos)
                 const auto& Item=List[i];
                 if (HI_ME_Pos==(size_t)-1 && (Item==HI_ME_Text || Item==VI_ME_Text))
                     HI_ME_Pos=i;
-                if (HI_D_Pos==(size_t)-1 && (Item==HI_D_Text || Item==HI_D_Text))
+                if (HI_D_Pos==(size_t)-1 && (Item==HI_D_Text || Item==VI_D_Text))
                     HI_D_Pos=i;
             }
             if (HI_ME_Pos!=(size_t)-1 && HI_D_Pos!=(size_t)-1)
@@ -852,10 +958,12 @@ void File__Analyze::Streams_Finish_StreamOnly_General(size_t StreamPos)
     {
         const Ztring& Name=Retrieve(Stream_General, StreamPos, General_FileName);
         const Ztring& Extension=Retrieve(Stream_General, StreamPos, General_FileExtension);
-        if (!Name.empty() || !Extension.empty())
+        const Ztring& FormatName=Retrieve(Stream_General, StreamPos, General_Format);
+        auto IsMachOAndEmptyExtension = Extension.empty() && FormatName.rfind(__T("Mach-O"), 0)==0;
+        if ((!Name.empty() && !IsMachOAndEmptyExtension) || !Extension.empty())
         {
             InfoMap &FormatList=MediaInfoLib::Config.Format_Get();
-            InfoMap::iterator Format=FormatList.find(Retrieve(Stream_General, StreamPos, General_Format));
+            InfoMap::iterator Format=FormatList.find(FormatName);
             if (Format!=FormatList.end())
             {
                 ZtringList ValidExtensions;
@@ -884,6 +992,168 @@ void File__Analyze::Streams_Finish_StreamOnly_General(size_t StreamPos)
         }
         if (Channels_Total)
             Fill(Stream_General, StreamPos, General_Audio_Channels_Total, Channels_Total);
+    }
+
+    //Exceptions (empiric)
+    {
+        const auto& Application_Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Application_Name);
+        if (Application_Name.size()>=5 && Application_Name.find(__T(", LLC"))==Application_Name.size()-5)
+        {
+            Fill(Stream_General, 0, General_Encoded_Application_CompanyName, Application_Name.substr(0, Application_Name.size()-5));
+            Clear(Stream_General, StreamPos, General_Encoded_Application_Name);
+        }
+    }
+    {
+        const auto& Application_Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Application_Name);
+        if (Application_Name.size()>=5 && Application_Name.rfind(__T("Mac OS X "), 0)==0)
+        {
+            Fill(Stream_General, 0, General_Encoded_Application_Version, Application_Name.substr(9), true);
+            const auto& Application_CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Application_CompanyName);
+            if (Application_CompanyName.empty())
+                Fill(Stream_General, 0, General_Encoded_Application_CompanyName, "Apple");
+            Fill(Stream_General, StreamPos, General_Encoded_Application_Name, "Mac OS X", Unlimited, true, true);
+        }
+        if (Application_Name.size()>=5 && Application_Name.rfind(__T("Sorenson "), 0)==0)
+        {
+            auto Application_Name_Max=Application_Name.find(__T(" / "));
+            if (Application_Name_Max!=(size_t)-1)
+                Application_Name_Max-=9;
+            Fill(Stream_General, 0, General_Encoded_Application_Name, Application_Name.substr(9, Application_Name_Max), true);
+            const auto& Application_CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Application_CompanyName);
+            if (Application_CompanyName.empty())
+                Fill(Stream_General, 0, General_Encoded_Application_CompanyName, "Sorenson");
+        }
+    }
+    {
+        const auto& Application_Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Application_Name);
+        const auto& OperatingSystem_Version=Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_Version);
+        const auto& Hardware_Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Name);
+        if (OperatingSystem_Version.empty() && !Application_Name.empty() && Application_Name.find_first_not_of(__T("0123456789."))==string::npos && Hardware_Name.rfind(__T("iPhone "), 0)==0)
+        {
+            Fill(Stream_General, 0, General_Encoded_OperatingSystem_Version, Application_Name);
+            Fill(Stream_General, 0, General_Encoded_OperatingSystem_Name, "iOS", Unlimited, true, true);
+            const auto& OperatingSystem_CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_CompanyName);
+            if (OperatingSystem_CompanyName.empty())
+                Fill(Stream_General, 0, General_Encoded_OperatingSystem_CompanyName, "Apple");
+            Clear(Stream_General, StreamPos, General_Encoded_Application_Name);
+        }
+    }
+    {
+        const auto& Hardware_CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_CompanyName);
+        const auto& Hardware_Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Name);
+        if (Hardware_Name.rfind(Hardware_CompanyName+__T(' '), 0) == 0)
+            Fill(Stream_General, StreamPos, General_Encoded_Hardware_Name, Hardware_Name.substr(Hardware_CompanyName.size()+1), true);
+    }
+    if (Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Name).empty())
+    {
+        const auto& Performer=Retrieve_Const(Stream_General, StreamPos, General_Performer);
+        const auto& Hardware_CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_CompanyName);
+        ZtringList PerformerList;
+        PerformerList.Separator_Set(0, __T(" / "));
+        PerformerList.Write(Performer);
+        set<Ztring> HardwareName_List;
+        for (size_t i=0; i<PerformerList.size(); i++)
+        {
+            const auto& PerformerItem=PerformerList[i];
+            auto ShortAndContainsHardwareCompanyName=PerformerItem.size()-Hardware_CompanyName.size()<=16 && PerformerItem.rfind(Hardware_CompanyName+__T(' '), 0)==0;
+            if (ShortAndContainsHardwareCompanyName || Hardware_CompanyName==__T("Samsung") && PerformerItem.size()<=32 && PerformerItem.rfind(__T("Galaxy "), 0)==0)
+            {
+                ZtringList Items;
+                Items.Separator_Set(0, __T(" "));
+                Items.Write(PerformerItem);
+                if (Items.size()<6)
+                {
+                    auto IsLikelyName=false;
+                    auto LastHasOnlyDigits=false;
+                    for (const auto& Item : Items)
+                    {
+                        size_t HasUpper=0;
+                        size_t HasDigit=0;
+                        for (const auto& Value : Item)
+                        {
+                            HasUpper+=IsAsciiUpper(Value);
+                            HasDigit+=IsAsciiDigit(Value);
+                        }
+                        LastHasOnlyDigits=HasDigit==Item.size();
+                        if (Item.size()==1 || HasUpper>=2 || (HasDigit && HasDigit<Item.size()))
+                            IsLikelyName=true;
+                    }
+                    if (IsLikelyName || LastHasOnlyDigits)
+                    {
+                        HardwareName_List.insert(PerformerItem.substr(ShortAndContainsHardwareCompanyName?(Hardware_CompanyName.size()+1):0));
+                        PerformerList.erase(PerformerList.begin()+i);
+                        continue;
+                    }
+                }
+            }
+        }
+        if (HardwareName_List.size()==1)
+        {
+            //Performer is likely the actual performer
+            Fill(Stream_General, StreamPos, General_Encoded_Hardware_Name, *HardwareName_List.begin());
+            Fill(Stream_General, StreamPos, General_Performer, PerformerList.Read(), true);
+        }
+    }
+    {
+        const auto& Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Name);
+        const auto& Model=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Model);
+        if (Name==Model)
+        {
+            //Name is actually the model (technical name), keeping only model
+            Clear(Stream_General, StreamPos, General_Encoded_Hardware_Name);
+        }
+    }
+
+    //OperatingSystem
+    if (Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_String).empty())
+    {
+        //Filling
+        const auto& CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_CompanyName);
+        const auto& Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_Name);
+        const auto& Version=Retrieve_Const(Stream_General, StreamPos, General_Encoded_OperatingSystem_Version);
+        Ztring OperatingSystem=CompanyName;
+        if (!Name.empty())
+        {
+            if (!OperatingSystem.empty())
+                OperatingSystem+=' ';
+            OperatingSystem+=Name;
+            if (!Version.empty())
+            {
+                OperatingSystem+=' ';
+                OperatingSystem+=Version;
+            }
+        }
+        Fill(Stream_General, StreamPos, General_Encoded_OperatingSystem_String, OperatingSystem);
+    }
+
+    //Hardware
+    if (Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_String).empty())
+    {
+        //Filling
+        const auto& CompanyName=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_CompanyName);
+        const auto& Name=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Name);
+        const auto& Model=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Model);
+        const auto& Version=Retrieve_Const(Stream_General, StreamPos, General_Encoded_Hardware_Version);
+        Ztring Hardware=CompanyName;
+        if (!Name.empty())
+        {
+            if (!Hardware.empty())
+                Hardware+=' ';
+            Hardware+=Name;
+        }
+        if (!Model.empty())
+        {
+            if (!Hardware.empty())
+                Hardware+=' ';
+            if (!Name.empty())
+                Hardware+='(';
+            Hardware+=Model;
+            if (!Name.empty())
+                Hardware+=')';
+        }
+        if (!Hardware.empty() && !Version.empty())
+            Hardware+=Version;
+        Fill(Stream_General, StreamPos, General_Encoded_Hardware_String, Hardware);
     }
 }
 
@@ -947,8 +1217,25 @@ void File__Analyze::Streams_Finish_StreamOnly_Video(size_t Pos)
            Fill(Stream_Video, Pos, Video_FrameRate, FrameCount/Duration, 3);
     }
 
-    //Pixel Aspect Ratio forced to 1.000 if none
+    //Pixel Aspect Ratio forced from picture pixel size and Display Aspect Ratio
     if (Retrieve(Stream_Video, Pos, Video_PixelAspectRatio).empty())
+    {
+        const Ztring& DAR_S=Retrieve_Const(Stream_Video, Pos, Video_DisplayAspectRatio);
+        float DAR=DAR_S.To_float32();
+        float Width=Retrieve(Stream_Video, Pos, Video_Width).To_float32();
+        float Height=Retrieve(Stream_Video, Pos, Video_Height).To_float32();
+        if (DAR && Height && Width)
+        {
+            if (DAR_S==__T("1.778"))
+                DAR=((float)16)/9; //More exact value
+            if (DAR_S==__T("1.333"))
+                DAR=((float)4)/3; //More exact value
+            Fill(Stream_Video, Pos, Video_PixelAspectRatio, DAR/(((float32)Width)/Height));
+        }
+    }
+
+    //Pixel Aspect Ratio forced to 1.000 if none
+    if (Retrieve(Stream_Video, Pos, Video_PixelAspectRatio).empty() && Retrieve(Stream_Video, Pos, Video_DisplayAspectRatio).empty())
         Fill(Stream_Video, Pos, Video_PixelAspectRatio, 1.000);
 
     //Standard
@@ -990,21 +1277,15 @@ void File__Analyze::Streams_Finish_StreamOnly_Video(size_t Pos)
     }
 
     //Commercial name
-    if ((Retrieve(Stream_Video, Pos, Video_BitDepth).empty() || Retrieve(Stream_Video, Pos, Video_BitDepth)==__T("10")) //e.g. ProRes has not bitdepth info
-     && Retrieve(Stream_Video, Pos, Video_ChromaSubsampling)==__T("4:2:0")
-     && (Retrieve(Stream_Video, Pos, Video_colour_description_present).empty() || //From  CFF: "colour_description_present_flag SHALL be set to 1 if the color parameters from [R709] are not used."
-       ( Retrieve(Stream_Video, Pos, Video_colour_primaries)==__T("BT.2020")
-      && Retrieve(Stream_Video, Pos, Video_transfer_characteristics)==__T("PQ")
-      && Retrieve(Stream_Video, Pos, Video_matrix_coefficients).find(__T("BT.2020"))==0))
-     && !Retrieve(Stream_Video, Pos, "MasteringDisplay_ColorPrimaries").empty()
-     // && !Retrieve(Stream_Video, Pos, "MaxCLL").empty()
-     // && !Retrieve(Stream_Video, Pos, "MaxFALL").empty() // MaxCLL & MaxFALL are required except if not available so not required in practice https://www.cta.tech/News/Press-Releases/2015/August/CEA-Defines-%E2%80%98HDR-Compatible%E2%80%99-Displays.aspx https://www.ultrahdforum.org/wp-content/uploads/2016/04/Ultra-HD-Forum-Deployment-Guidelines-V1.1-Summer-2016.pdf
-        )
+    if (Retrieve(Stream_Video, Pos, Video_HDR_Format_Compatibility).rfind(__T("HDR10"), 0)==0
+     && ((!Retrieve(Stream_Video, Pos, Video_BitDepth).empty() && Retrieve(Stream_Video, Pos, Video_BitDepth).To_int64u()<10) //e.g. ProRes has not bitdepth info
+     || Retrieve(Stream_Video, Pos, Video_colour_primaries)!=__T("BT.2020")
+     || Retrieve(Stream_Video, Pos, Video_transfer_characteristics)!=__T("PQ")
+     || Retrieve(Stream_Video, Pos, Video_MasteringDisplay_ColorPrimaries).empty()
+        ))
     {
         //We actually fill HDR10/HDR10+ by default, so it will be removed below if not fitting in the color related rules
-    }
-    else if (!Retrieve_Const(Stream_Video, Pos, Video_HDR_Format_Compatibility).empty())
-    {
+        Clear(Stream_Video, Pos, Video_HDR_Format_Compatibility);
     }
     if (Retrieve(Stream_Video, Pos, Video_HDR_Format_String).empty())
     {
@@ -1012,6 +1293,10 @@ void File__Analyze::Streams_Finish_StreamOnly_Video(size_t Pos)
         Summary.Separator_Set(0, __T(" / "));
         Summary.Write(Retrieve(Stream_Video, Pos, Video_HDR_Format));
         ZtringList Commercial=Summary;
+        size_t DolbyVision_Pos=(size_t)-1;
+        for (size_t j=0; j<Summary.size(); j++)
+            if (Summary[j]==__T("Dolby Vision"))
+                DolbyVision_Pos=j;
         if (!Summary.empty())
         {
             ZtringList HDR_Format_Compatibility;
@@ -1020,7 +1305,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Video(size_t Pos)
             HDR_Format_Compatibility.resize(Summary.size());
             ZtringList ToAdd;
             ToAdd.Separator_Set(0, __T(" / "));
-            for (size_t i=Video_HDR_Format_String+1; i<=Video_HDR_Format_Settings; i++)
+            for (size_t i=Video_HDR_Format_String+1; i<=Video_HDR_Format_Compression; i++)
             {
                 ToAdd.Write(Retrieve(Stream_Video, Pos, i));
                 ToAdd.resize(Summary.size());
@@ -1032,9 +1317,38 @@ void File__Analyze::Streams_Finish_StreamOnly_Video(size_t Pos)
                         {
                             case Video_HDR_Format_Version: Summary[j]+=__T(", Version "); break;
                             case Video_HDR_Format_Level: Summary[j]+=__T('.'); break;
+                            case Video_HDR_Format_Compression: ToAdd[j][0]+=0x20; if (ToAdd[j].size()==4) ToAdd[j].resize(2); ToAdd[j]+=__T(" metadata compression"); [[fallthrough]];
                             default: Summary[j] += __T(", ");
                         }
                         Summary[j]+=ToAdd[j];
+                        if (i==Video_HDR_Format_Version && j==DolbyVision_Pos)
+                        {
+                            ToAdd.Write(Retrieve(Stream_Video, Pos, Video_HDR_Format_Profile));
+                            if (j<ToAdd.size())
+                            {
+                                const Ztring& Profile=ToAdd[j];
+                                size_t Profile_Dot=Profile.find(__T('.'));
+                                if (Profile_Dot!=string::npos)
+                                {
+                                    Profile_Dot++;
+                                    if (Profile_Dot<Profile.size() && Profile[Profile_Dot]==__T('0'))
+                                        Profile_Dot++;
+                                    Summary[j]+=__T(", Profile ");
+                                    Summary[j]+=Profile.substr(Profile_Dot);
+                                    ToAdd.Write(Retrieve(Stream_Video, Pos, Video_HDR_Format_Compatibility));
+                                    if (j<ToAdd.size())
+                                    {
+                                        const Ztring& Compatibility=ToAdd[j];
+                                        size_t Compatibility_Pos=DolbyVision_Compatibility_Pos(Compatibility);
+                                        if (Compatibility_Pos!=size_t()-1)
+                                        {
+                                            Summary[j]+=__T('.');
+                                            Summary[j]+=Ztring::ToZtring(Compatibility_Pos, 16);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1206,6 +1520,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
         for (size_t i=Pos+1; i<Count_Get(Stream_Audio);)
         {
             size_t OtherID_Count;
+            Ztring OtherStreamOrder;
             Ztring OtherID;
             Ztring OtherID_String;
             if (Retrieve_Const(Stream_Audio, i, Audio_Format)==__T("Dolby ED2"))
@@ -1214,6 +1529,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
                 if (!Retrieve_Const(Stream_Audio, i, "Presentation0").empty())
                     break; // It is the next ED2
                 OtherID_Count=0;
+                OtherStreamOrder=Retrieve(Stream_Audio, i, Audio_StreamOrder);
                 OtherID=Retrieve(Stream_Audio, i, Audio_ID);
                 OtherID_String =Retrieve(Stream_Audio, i, Audio_ID_String);
             }
@@ -1221,6 +1537,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
              && Retrieve_Const(Stream_Audio, i  , Audio_Format)==__T("Dolby E")
              && Retrieve_Const(Stream_Audio, i+7, Audio_Format)==__T("Dolby E"))
             {
+                Ztring NextStreamOrder=Retrieve_Const(Stream_Audio, i, Audio_StreamOrder);
                 Ztring NextID=Retrieve_Const(Stream_Audio, i, Audio_ID);
                 size_t NextID_DashPos=NextID.rfind(__T('-'));
                 if (NextID_DashPos!=(size_t)-1)
@@ -1228,6 +1545,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
                 if (Retrieve_Const(Stream_Audio, i+7, Audio_ID)==NextID+__T("-8"))
                 {
                     OtherID_Count=7;
+                    OtherStreamOrder=NextStreamOrder;
                     OtherID=NextID;
                 }
                 NextID=Retrieve_Const(Stream_Audio, i, Audio_ID_String);
@@ -1262,6 +1580,13 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
             else
             {
                 Ztring CurrentID_String=Retrieve(Stream_Audio, Pos, Audio_ID_String);
+                if (Retrieve_Const(Stream_General, 0, General_Format)==__T("MPEG-TS"))
+                {
+                    auto ProgramSeparator=OtherStreamOrder.find(__T('-'));
+                    if (ProgramSeparator!=string::npos)
+                        OtherStreamOrder.erase(0, ProgramSeparator+1);
+                }
+                Fill(Stream_Audio, Pos, Audio_StreamOrder, OtherStreamOrder);
                 Fill(Stream_Audio, Pos, Audio_ID, OtherID);
                 Fill(Stream_Audio, Pos, Audio_ID_String, CurrentID_String+__T(" / ")+OtherID_String, true);
             }
@@ -1296,7 +1621,7 @@ void File__Analyze::Streams_Finish_StreamOnly_Audio(size_t Pos)
                 if (Audio_Begin!=List[2].size())
                 {
                     for (size_t j=0; j<6; j++)
-                        if (!List[j].empty())
+                        if (!List[j].empty() && Audio_Begin+i<List[j].size())
                             List[j].erase(List[j].begin()+Audio_Begin+i);
                     size_t Audio_End;
                     for (Audio_End=Audio_Begin+1; Audio_End<List[2].size(); Audio_End++)
@@ -1554,8 +1879,69 @@ void File__Analyze::Streams_Finish_StreamOnly_Other(size_t UNUSED(StreamPos))
 }
 
 //---------------------------------------------------------------------------
-void File__Analyze::Streams_Finish_StreamOnly_Image(size_t UNUSED(StreamPos))
+void File__Analyze::Streams_Finish_StreamOnly_Image(size_t Pos)
 {
+    //Commercial name
+    if (Retrieve(Stream_Image, Pos, Image_HDR_Format_Compatibility).rfind(__T("HDR10"), 0)==0
+     && ((!Retrieve(Stream_Image, Pos, Image_BitDepth).empty() && Retrieve(Stream_Image, Pos, Image_BitDepth).To_int64u()<10) //e.g. ProRes has not bitdepth info
+      || Retrieve(Stream_Image, Pos, Image_colour_primaries)!=__T("BT.2020")
+      || Retrieve(Stream_Image, Pos, Image_transfer_characteristics)!=__T("PQ")
+      || Retrieve(Stream_Image, Pos, Image_MasteringDisplay_ColorPrimaries).empty()
+        ))
+    {
+        //We actually fill HDR10/HDR10+ by default, so it will be removed below if not fitting in the color related rules
+        Clear(Stream_Image, Pos, Image_HDR_Format_Compatibility);
+    }
+    if (Retrieve(Stream_Image, Pos, Image_HDR_Format_String).empty())
+    {
+        ZtringList Summary;
+        Summary.Separator_Set(0, __T(" / "));
+        Summary.Write(Retrieve(Stream_Image, Pos, Image_HDR_Format));
+        ZtringList Commercial=Summary;
+        if (!Summary.empty())
+        {
+            ZtringList HDR_Format_Compatibility;
+            HDR_Format_Compatibility.Separator_Set(0, __T(" / "));
+            HDR_Format_Compatibility.Write(Retrieve(Stream_Image, Pos, Image_HDR_Format_Compatibility));
+            HDR_Format_Compatibility.resize(Summary.size());
+            ZtringList ToAdd;
+            ToAdd.Separator_Set(0, __T(" / "));
+            for (size_t i=Image_HDR_Format_String+1; i<=Image_HDR_Format_Settings; i++)
+            {
+                ToAdd.Write(Retrieve(Stream_Image, Pos, i));
+                ToAdd.resize(Summary.size());
+                for (size_t j=0; j<Summary.size(); j++)
+                {
+                    if (!ToAdd[j].empty())
+                    {
+                        switch (i)
+                        {
+                            case Image_HDR_Format_Version: Summary[j]+=__T(", Version "); break;
+                            case Image_HDR_Format_Level: Summary[j]+=__T('.'); break;
+                            default: Summary[j] += __T(", ");
+                        }
+                        Summary[j]+=ToAdd[j];
+                    }
+                }
+            }
+            for (size_t j=0; j<Summary.size(); j++)
+                if (!HDR_Format_Compatibility[j].empty())
+                {
+                    Summary[j]+=__T(", ")+HDR_Format_Compatibility[j]+__T(" compatible");
+                    Commercial[j]=HDR_Format_Compatibility[j];
+                    if (!Commercial[j].empty())
+                    {
+                        auto Commercial_Reduce=Commercial[j].find(__T(' '));
+                        if (Commercial_Reduce<Commercial[j].size()-1 && Commercial[j][Commercial_Reduce+1]>='0' && Commercial[j][Commercial_Reduce+1]<='9')
+                            Commercial_Reduce=Commercial[j].find(__T(' '), Commercial_Reduce+1);
+                        if (Commercial_Reduce!=string::npos)
+                            Commercial[j].resize(Commercial_Reduce);
+                    }
+                }
+            Fill(Stream_Image, Pos, Image_HDR_Format_String, Summary.Read());
+            Fill(Stream_Image, Pos, Image_HDR_Format_Commercial, Commercial.Read());
+        }
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -1927,14 +2313,11 @@ void File__Analyze::Streams_Finish_HumanReadable_PerStream(stream_t StreamKind, 
         Ztring Name=Retrieve(StreamKind, StreamPos, "Encoded_Application_Name");
         Ztring Version=Retrieve(StreamKind, StreamPos, "Encoded_Application_Version");
         Ztring Date=Retrieve(StreamKind, StreamPos, "Encoded_Application_Date");
-        if (!Name.empty())
+        if (!CompanyName.empty() || !Name.empty())
         {
-            Ztring String;
-            if (!CompanyName.empty())
-            {
-                String+=CompanyName;
-                String+=__T(" ");
-            }
+            Ztring String=CompanyName;
+            if (!CompanyName.empty() && !Name.empty())
+                String+=' ';
             String+=Name;
             if (!Version.empty())
             {

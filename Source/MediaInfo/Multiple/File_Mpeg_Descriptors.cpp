@@ -50,6 +50,7 @@ namespace MediaInfoLib
 namespace Elements
 {
     const int32u AC_3=0x41432D33; //Exactly AC-3
+    const int32u AVSV=0x41565356; //AVSV
     const int32u BSSD=0x42535344; //PCM
     const int32u CUEI=0x43554549; //SCTE
     const int32u DTS1=0x44545331; //DTS
@@ -76,14 +77,69 @@ namespace Elements
 //***************************************************************************
 
 //---------------------------------------------------------------------------
-//Extern
-extern string Avc_profile_level_string(int8u profile_idc, int8u level_idc=0, int8u constraint_set_flags=0);
-
-//---------------------------------------------------------------------------
 const char* Mpegv_colour_primaries(int8u colour_primaries);
 const char* Mpegv_transfer_characteristics(int8u transfer_characteristics);
 const char* Mpegv_matrix_coefficients(int8u matrix_coefficients);
 const char* Mpegv_matrix_coefficients_ColorSpace(int8u matrix_coefficients);
+string Avc_profile_level_string(int8u profile_idc, int8u level_idc=0, int8u constraint_set_flags=0);
+const char* Hevc_profile_idc(int32u profile_idc);
+const char* Hevc_tier_flag(bool tier_flag);
+string Vvc_profile_idc(int8u profile_idc);
+string Vvc_level_idc(int8u level_idc);
+string Vvc_profile_level_tier_string(int8u profile_idc, int8u level_idc, bool tier_flag);
+
+//---------------------------------------------------------------------------
+typedef int8u tag_struct[][4];
+static tag_struct Mpeg_Descriptors_video_properties_tag_0=
+{
+    {  1,  1,  1, 0},
+    {  1,  1,  0, 0},
+    {  6,  6,  6, 0},
+    {  5,  6,  5, 0},
+    {  1,  1,  0, 1},
+};
+static int8u Mpeg_Descriptors_video_properties_tag_0_Size=sizeof(Mpeg_Descriptors_video_properties_tag_0)/sizeof(Mpeg_Descriptors_video_properties_tag_0[0]);
+static tag_struct Mpeg_Descriptors_video_properties_tag_1=
+{
+    {  9, 14,  9, 0},
+    {  9, 14,  0, 0},
+    {  9, 14,  0, 1},
+    { 12,  1,  6, 1},
+};
+static int8u Mpeg_Descriptors_video_properties_tag_1_Size=sizeof(Mpeg_Descriptors_video_properties_tag_0)/sizeof(Mpeg_Descriptors_video_properties_tag_0[0]);
+static tag_struct Mpeg_Descriptors_video_properties_tag_2=
+{
+    {  9, 16,  9, 0},
+    {  9, 18,  9, 0},
+    {  9, 16, 14, 0},
+    {  9, 16,  0, 0},
+    {  9, 18,  0, 0},
+};
+static int8u Mpeg_Descriptors_video_properties_tag_2_Size=sizeof(Mpeg_Descriptors_video_properties_tag_0)/sizeof(Mpeg_Descriptors_video_properties_tag_0[0]);
+static int8u Mpeg_Descriptors_video_properties_tag_Sizes[]=
+{
+    Mpeg_Descriptors_video_properties_tag_0_Size,
+    Mpeg_Descriptors_video_properties_tag_1_Size,
+    Mpeg_Descriptors_video_properties_tag_2_Size,
+};
+static tag_struct* Mpeg_Descriptors_video_properties_tag_Data[]=
+{
+    (tag_struct*)&Mpeg_Descriptors_video_properties_tag_0,
+    (tag_struct*)&Mpeg_Descriptors_video_properties_tag_1,
+    (tag_struct*)&Mpeg_Descriptors_video_properties_tag_2,
+};
+static void Mpeg_Descriptors_video_properties_tag(std::map<std::string, Ztring>& Infos, int8u HDR_WCG_idc, int8u video_properties_tag)
+{
+    if (HDR_WCG_idc>=3 || !video_properties_tag || video_properties_tag>Mpeg_Descriptors_video_properties_tag_Sizes[HDR_WCG_idc])
+        return;
+    const auto& Data=(*(Mpeg_Descriptors_video_properties_tag_Data[HDR_WCG_idc]))[video_properties_tag-1];
+    Infos["colour_description_present"]=__T("Yes");
+    Infos["colour_primaries"].From_UTF8(Mpegv_colour_primaries(Data[0]));
+    Infos["transfer_characteristics"].From_UTF8(Mpegv_transfer_characteristics(Data[1]));
+    Infos["matrix_coefficients"].From_UTF8(Mpegv_matrix_coefficients(Data[2]));
+    Infos["ColorSpace"].From_UTF8(Mpegv_matrix_coefficients_ColorSpace(Data[2]));
+    Infos["colour_range"].From_UTF8(Data[3]?"Full":"Limited");
+}
 
 //---------------------------------------------------------------------------
 const char* Mpeg_Descriptors_audio_type(int8u ID)
@@ -678,6 +734,7 @@ stream_t Mpeg_Descriptors_registration_format_identifier_StreamKind(int32u forma
     switch (format_identifier)
     {
         case Elements::AC_3 : return Stream_Audio;
+        case Elements::AVSV : return Stream_Video;
         case Elements::BSSD : return Stream_Audio;
         case Elements::DTS1 : return Stream_Audio;
         case Elements::DTS2 : return Stream_Audio;
@@ -1312,6 +1369,107 @@ static string JpegXs_Plev(int16u Value, bool Bayer=false)
 };
 
 //---------------------------------------------------------------------------
+const int16u DVB_Text_00[96]=
+{
+    0x00A0,
+    0x00A1,
+    0x00A2,
+    0x00A3,
+    0x20AC,
+    0x00A5,
+    0xFFFD,
+    0x00A7,
+    0x00A4,
+    0x2018,
+    0x201C,
+    0x00AB,
+    0x2190,
+    0x2191,
+    0x2192,
+    0x2193,
+    0x00B0,
+    0x00B1,
+    0x00B2,
+    0x00B3,
+    0x00D7,
+    0x00B5,
+    0x00B6,
+    0x00B7,
+    0x00F7,
+    0x2019,
+    0x201D,
+    0x00BB,
+    0x00BC,
+    0x00BD,
+    0x00BE,
+    0x00BF,
+    0xFFFD,
+    0x0300,
+    0x0301,
+    0x0302,
+    0x0303,
+    0x0304,
+    0x0306,
+    0x0307,
+    0x0308,
+    0xFFFD,
+    0x030A,
+    0x0327,
+    0xFFFD,
+    0x030B,
+    0x0328,
+    0x030C,
+    0x2015,
+    0x00B9,
+    0x00AE,
+    0x00A9,
+    0x2122,
+    0x266A,
+    0x00AC,
+    0x00A6,
+    0xFFFD,
+    0xFFFD,
+    0xFFFD,
+    0xFFFD,
+    0x215B,
+    0x215C,
+    0x215D,
+    0x215E,
+    0x2126,
+    0x00C6,
+    0x0110,
+    0x00AA,
+    0x0126,
+    0xFFFD,
+    0x0132,
+    0x013F,
+    0x0141,
+    0x00D8,
+    0x0152,
+    0x00BA,
+    0x00DE,
+    0x0166,
+    0x014A,
+    0x0149,
+    0x0138,
+    0x00E6,
+    0x0111,
+    0x00F0,
+    0x0127,
+    0x0131,
+    0x0133,
+    0x0140,
+    0x0142,
+    0x00F8,
+    0x0153,
+    0x00DF,
+    0x00FE,
+    0x0167,
+    0x0148,
+    0x00AD,
+};
+
+//---------------------------------------------------------------------------
 extern const size_t DolbyVision_Compatibility_Size;
 extern const char* DolbyVision_Compatibility[];
 
@@ -1450,6 +1608,7 @@ void File_Mpeg_Descriptors::Data_Parse()
             ELEMENT_CASE(36, "Stereoscopic_video_info");
             ELEMENT_CASE(37, "Transport_profile");
             ELEMENT_CASE(38, "HEVC video");
+            ELEMENT_CASE(39, "VVC video");
             ELEMENT_CASE(3F, "Extension");
 
             //Following is in private sections, in case there is not network type detected
@@ -2160,8 +2319,6 @@ void File_Mpeg_Descriptors::Descriptor_2F()
 }
 
 //---------------------------------------------------------------------------
-extern const char* Hevc_tier_flag(bool tier_flag);
-extern const char* Hevc_profile_idc(int32u profile_idc);
 void File_Mpeg_Descriptors::Descriptor_38()
 {
     //Parsing
@@ -2209,6 +2366,46 @@ void File_Mpeg_Descriptors::Descriptor_38()
         }
 
         Complete_Stream->Streams[elementary_PID]->Infos["Format_Profile"]=Profile;
+    FILLING_END();
+}
+
+//---------------------------------------------------------------------------
+void File_Mpeg_Descriptors::Descriptor_39()
+{
+    //Parsing
+    int8u  profile_idc, num_sub_profiles, level_idc, HDR_WCG_idc, video_properties_tag;
+    bool   tier_flag, temporal_layer_subset_flag;
+    BS_Begin();
+    Get_S1 (7, profile_idc,                                     "profile_idc"); Param_Info1(Vvc_profile_idc(profile_idc));
+    Get_SB (   tier_flag,                                       "tier_flag"); Param_Info1(Hevc_tier_flag(tier_flag));
+    Get_S1 (8, num_sub_profiles,                                "num_sub_profiles");
+    for (int8u i=0; i<num_sub_profiles; i++)
+        Skip_S4(32,                                             "sub_profile_idc");
+    Skip_SB(                                                    "progressive_source_flag");
+    Skip_SB(                                                    "interlaced_source_flag");
+    Skip_SB(                                                    "non_packed_constraint_flag");
+    Skip_SB(                                                    "frame_only_constraint_flag");
+    Skip_S1(4,                                                  "reserved");
+    Get_S1 (8, level_idc,                                       "level_idc"); Param_Info1(Vvc_level_idc(level_idc));
+    Get_SB (    temporal_layer_subset_flag,                     "temporal_layer_subset_flag");
+    Skip_SB(                                                    "VVC_still_present_flag");
+    Skip_SB(                                                    "VVC_24hr_picture_present_flag");
+    Skip_S1(5,                                                  "reserved");
+    Get_S1 (2, HDR_WCG_idc,                                     "HDR_WCG_idc");
+    Skip_S1(4,                                                  "reserved");
+    Get_S1 (2, video_properties_tag,                            "video_properties_tag");
+    if (temporal_layer_subset_flag)
+    {
+        Skip_S1(5,                                              "reserved");
+        Skip_S1(3,                                              "temporal_id_min");
+        Skip_S1(5,                                              "reserved");
+        Skip_S1(3,                                              "temporal_id_max");
+    }
+    BS_End();
+
+    FILLING_BEGIN();
+        Complete_Stream->Streams[elementary_PID]->Infos["Format_Profile"].From_UTF8(Vvc_profile_level_tier_string(profile_idc, level_idc, tier_flag));
+        Mpeg_Descriptors_video_properties_tag(Complete_Stream->Streams[elementary_PID]->Infos, HDR_WCG_idc, video_properties_tag);
     FILLING_END();
 }
 
@@ -2388,13 +2585,15 @@ void File_Mpeg_Descriptors::Descriptor_3F_14()
                 Complete_Stream->Streams[elementary_PID]->Infos["BitRate_Maximum"].From_Number(brat*1000000);
             if (Framerate_Numerator && Framerate_Denominator && Framerate_Denominator<=2)
             {
+                int32u Num=Framerate_Numerator;
+                int32u Den=Framerate_Denominator;
                 if (Framerate_Denominator==2)
                 {
-                    Framerate_Numerator*=1000;
-                    Framerate_Denominator=1001;
+                    Num*=1000;
+                    Den=1001;
                 }
-                Complete_Stream->Streams[elementary_PID]->Infos["FrameRate_Num"].From_Number(Framerate_Numerator);
-                Complete_Stream->Streams[elementary_PID]->Infos["FrameRate_Den"].From_Number(Framerate_Denominator);
+                Complete_Stream->Streams[elementary_PID]->Infos["FrameRate_Num"].From_Number(Num);
+                Complete_Stream->Streams[elementary_PID]->Infos["FrameRate_Den"].From_Number(Den);
             }
             if (Interlace_Mode!=3)
             {
@@ -2441,7 +2640,7 @@ void File_Mpeg_Descriptors::Descriptor_40()
 {
     //Parsing
     Ztring network_name;
-    Get_DVB_Text(Element_Size, network_name,                    "network_name");
+    Get_DVB_Text(Element_Size, 0, network_name,                 "network_name");
 
     FILLING_BEGIN();
         Complete_Stream->network_name=network_name;
@@ -2502,9 +2701,9 @@ void File_Mpeg_Descriptors::Descriptor_48()
     int8u service_type, service_provider_name_length, service_name_length;
     Get_B1 (service_type,                                       "service_type"); Param_Info1(Mpeg_Descriptors_dvb_service_type(service_type));
     Get_B1 (service_provider_name_length,                       "service_provider_name_length");
-    Get_DVB_Text(service_provider_name_length, service_provider_name, "service_provider_name");
+    Get_DVB_Text(service_provider_name_length, 0, service_provider_name, "service_provider_name");
     Get_B1 (service_name_length,                                "service_name_length");
-    Get_DVB_Text(service_name_length, service_name,             "service_name");
+    Get_DVB_Text(service_name_length, 0, service_name,          "service_name");
 
     //Filling
     FILLING_BEGIN();
@@ -2540,9 +2739,9 @@ void File_Mpeg_Descriptors::Descriptor_4D()
     int8u event_name_length, text_length;
     Get_C3 (ISO_639_language_code,                              "ISO_639_language_code");
     Get_B1 (event_name_length,                                  "event_name_length");
-    Get_DVB_Text(event_name_length, event_name,                 "event_name"); Element_Info1(event_name);
+    Get_DVB_Text(event_name_length, ISO_639_language_code, event_name, "event_name"); Element_Info1(event_name);
     Get_B1 (text_length,                                        "text_length");
-    Get_DVB_Text(text_length, text,                             "text");
+    Get_DVB_Text(text_length, ISO_639_language_code, text,      "text");
 
     FILLING_BEGIN();
         if (table_id>=0x4E && table_id<=0x6F) //event_information_section
@@ -2575,7 +2774,7 @@ void File_Mpeg_Descriptors::Descriptor_50()
     Info_B1(component_type,                                     "component_type"); Param_Info1(Mpeg_Descriptors_component_type(stream_content, component_type)); Element_Info1(Mpeg_Descriptors_component_type(stream_content, component_type));
     Info_B1(component_tag,                                      "component_tag");
     Get_C3 (ISO_639_language_code,                              "ISO_639_language_code");
-    Skip_DVB_Text(Element_Size-Element_Offset,                  "text");
+    Skip_DVB_Text(Element_Size-Element_Offset, ISO_639_language_code, "text");
 
     FILLING_BEGIN();
         switch (table_id)
@@ -2734,12 +2933,13 @@ void File_Mpeg_Descriptors::Descriptor_59()
 {
     //Parsing
     Ztring Languages;
+    int8u subtitling_type;
     while (Element_Offset<Element_Size)
     {
         Element_Begin1("subtitle");
         int32u ISO_639_language_code;
         Get_C3 (ISO_639_language_code,                              "ISO_639_language_code");
-        Info_B1(subtitling_type,                                    "subtitling_type"); Param_Info1(Mpeg_Descriptors_component_type_O3(subtitling_type));
+        Get_B1 (subtitling_type,                                    "subtitling_type"); Param_Info1(Mpeg_Descriptors_component_type_O3(subtitling_type));
         Skip_B2(                                                    "composition_page_id");
         Skip_B2(                                                    "ancillary_page_id");
 
@@ -2775,6 +2975,7 @@ void File_Mpeg_Descriptors::Descriptor_59()
                             Complete_Stream->Streams[elementary_PID]->Infos["Language"]=Languages;
                             Complete_Stream->Streams[elementary_PID]->Infos["Format"]=__T("DVB Subtitle");
                             Complete_Stream->Streams[elementary_PID]->Infos["Codec"]=__T("DVB Subtitle");
+                            Complete_Stream->Streams[elementary_PID]->Infos["subtitling_type"].From_Number(subtitling_type);
                         }
                         break;
             default    : ;
@@ -2816,9 +3017,9 @@ void File_Mpeg_Descriptors::Descriptor_5D()
         int8u  service_provider_name_length, service_name_length;
         Get_C3 (ISO_639_language_code,                          "ISO_639_language_code");
         Get_B1 (service_provider_name_length,                   "service_provider_name_length");
-        Get_DVB_Text(service_provider_name_length, service_provider_name, "service_provider_name");
+        Get_DVB_Text(service_provider_name_length, ISO_639_language_code, service_provider_name, "service_provider_name");
         Get_B1 (service_name_length,                            "service_name_length");
-        Get_DVB_Text(service_name_length, service_name,         "service_name");
+        Get_DVB_Text(service_name_length, ISO_639_language_code, service_name, "service_name");
 
         //Filling
         FILLING_BEGIN();
@@ -3071,6 +3272,7 @@ void File_Mpeg_Descriptors::Descriptor_7B()
                         {
                             Complete_Stream->Streams[elementary_PID]->descriptor_tag=0x7B;
                         }
+                        break;
             default   : ;
         }
     FILLING_END();
@@ -3109,6 +3311,7 @@ void File_Mpeg_Descriptors::Descriptor_7C()
                             Complete_Stream->Streams[elementary_PID]->descriptor_tag=0x7C;
                             Complete_Stream->Streams[elementary_PID]->Infos["Format_Profile"]=Mpeg_Descriptors_MPEG_4_audio_profile_and_level(Profile_and_level);
                         }
+                        break;
             default   : ;
         }
     FILLING_END();
@@ -3302,7 +3505,7 @@ void File_Mpeg_Descriptors::Descriptor_7F_19()
         {
             Complete_Stream->Streams[elementary_PID]->StreamKind_FromDescriptor=Stream_Audio;
             size_t Infos_Pos=0;
-            for (map<int8u, Descriptor_7F_19_Info>::iterator Info=Infos.begin(); Info!=Infos.end(); Info++)
+            for (map<int8u, Descriptor_7F_19_Info>::iterator Info=Infos.begin(); Info!=Infos.end(); ++Info)
             {
                 string Prefix="Preselection"+Ztring::ToZtring(Info->first).To_UTF8();
                 if (Info->second.preselection_id!=Infos_Pos)
@@ -3967,43 +4170,102 @@ void File_Mpeg_Descriptors::ATSC_multiple_string_structure(Ztring &Value, const 
 }
 
 //---------------------------------------------------------------------------
-void File_Mpeg_Descriptors::Get_DVB_Text(int64u Size, Ztring &Value, const char* Info)
+void File_Mpeg_Descriptors::Get_DVB_Text(int64u Size, int32u LanguageCode, Ztring &Value, const char* Info)
 {
-    if (Size<1)
+    if (!Size)
     {
+        Value.clear();
         return;
     }
 
     //Testing if there is a codepage
+    int16u CodePage2;
     int8u CodePage1;
     Peek_B1(CodePage1);
-    if (CodePage1<0x20)
+    if (CodePage1<0x20 && LanguageCode!=0x006A706E) //TODO: files with jpn language code are not correctly decoded
     {
+        Size--;
         Skip_B1(                                                "CodePage"); Param_Info1(Mpeg_Descriptors_codepage_1(CodePage1));
-        if (CodePage1!=0x10)
+        switch (CodePage1)
         {
-            Get_Local(Size-1, Value,                            Info);
+            case 0x01: Get_ISO_8859_5(Size, Value,              Info); break;
+            case 0x05: Get_ISO_8859_9(Size, Value,              Info); break;
+            case 0x10:
+                if (Size==1)
+                {
+                    Skip_B1(                                    "(Invalid)");
+                    return;
+                }
+                Size-=2;
+                Get_B2 (CodePage2,                              "CodePage2");
+                switch (CodePage2)
+                {
+                    case 0x0001: Get_ISO_8859_1(Size, Value,    Info); break;
+                    case 0x0002: Get_ISO_8859_2(Size, Value,    Info); break;
+                    case 0x0005: Get_ISO_8859_5(Size, Value,    Info); break;
+                    case 0x0009: Get_ISO_8859_9(Size, Value,    Info); break;
+                    default:     Get_ISO_8859_1(Size, Value,    Info); //Not implemented, trying best effort at least for letters <0x80
+                }
+                break;
+            case 0x1F:
+                if (!Size)
+                    return; //Invalid
+                Size--;
+                Get_B1 (CodePage1,                              "CodePage2");
+                switch (CodePage1)
+                {
+                    default:     Get_ISO_8859_1(Size, Value,    Info); //Not implemented, trying best effort at least for letters <0x80
+                }
+                break;
+            case 0x11:
+            case 0x14: Get_UTF16B(Size, Value,                  Info); break;
+            case 0x15: Get_UTF8(Size, Value,                    Info); break;
+            default:   Get_ISO_8859_1(Size, Value,              Info); //Not implemented, trying best effort at least for letters <0x80
         }
-        else
-        {
-            if (Size<3)
-            {
-                Value.clear();
-                return;
-            }
-            int16u CodePage2;
-            Get_B2 (CodePage2,                                  "CodePage2");
-            if (CodePage2==0x02)
-            {
-                Get_ISO_8859_2(Size-3, Value,                   Info);
-            }
-            else //Unknown
-                Get_Local(Size-3, Value,                        Info);
-        }
-
     }
-    else
-        Get_Local(Size, Value,                                  Info);
+    else if (Element_Size-Element_Offset>=Size)
+    {
+        /*
+        //Get() with DVB_Text_00 table
+        auto Size_Max=Element_Size-Element_Offset;
+        if (Size>Size_Max)
+        {
+            Skip_XX(Size_Max,                               "(Invalid)");
+            return;
+        }
+        wstring Temp;
+        Temp.reserve(Size);
+        auto Buffer_Cur=Buffer+Buffer_Offset+(size_t)Element_Offset;
+        auto Buffer_End=Buffer_Cur+Size;
+        int8u Combining=0;
+        while (Buffer_Cur<Buffer_End)
+        {
+            auto Content=*Buffer_Cur++;
+            if (Content<0xA0)
+                Temp.push_back(Content);
+            else
+            {
+                Content-=0xA0;
+                if ((Content&0x20)==0x20) // 0xCx line
+                    Combining=Content;
+                else
+                {
+                    Temp.push_back(DVB_Text_00[Content]);
+                    if (Combining)
+                    {
+                        Temp.push_back(DVB_Text_00[Combining]);
+                        Combining=0;
+                    }
+                }
+            }
+        }
+        Value.From_Unicode(Temp);
+        if (Trace_Activated) Param(Value.To_UTF8(), Info);
+        Element_Offset+=Size;
+        */
+        //Spec indicates T.51/ISO/IEC 6937, but we found only files with latin1, TODO: see how to manage T.51/ISO/IEC 6937 if it is really the case somewhere
+        Get_ISO_8859_1(Size, Value, Info);
+    }
 }
 
 //---------------------------------------------------------------------------
