@@ -32,12 +32,14 @@ public :
     //In
     stream_t StreamKind;
     bool     Interlaced;
+    int8u    MxfContentKind;
     #if MEDIAINFO_DEMUX
     float64  FrameRate;
     #endif //MEDIAINFO_DEMUX
 
     //Constructor/Destructor
     File_Jpeg();
+    ~File_Jpeg();
 
 private :
     //Streams management
@@ -72,6 +74,7 @@ private :
     //Elements
     void TEM () {};
     void SOC () {}
+    void CAP ();
     void SIZ ();
     void COD ();
     void COC () {Skip_XX(Element_Size, "Data");}
@@ -131,10 +134,9 @@ private :
     void APP0_JFFF_3B();
     void APP1();
     void APP1_EXIF();
+    void APP1_XMP();
     void APP2();
     void APP2_ICC_PROFILE();
-    void APP2_ICC_PROFILE_XYZNumber();
-    void APP2_ICC_PROFILE_s15Fixed16Number(const char* Name);
     void APP3() {Skip_XX(Element_Size, "Data");}
     void APP4() {Skip_XX(Element_Size, "Data");}
     void APP5() {Skip_XX(Element_Size, "Data");}
@@ -169,6 +171,7 @@ private :
     int8u APPE_Adobe0_transform;
     bool  APP0_JFIF_Parsed;
     bool  SOS_SOD_Parsed;
+    File__Analyze* ICC_Parser=nullptr;
 };
 
 } //NameSpace

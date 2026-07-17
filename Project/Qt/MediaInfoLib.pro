@@ -44,6 +44,7 @@ HEADERS += \
         ../../Source/MediaInfo/Archive/File_Elf.h \
         ../../Source/MediaInfo/Archive/File_Gzip.h \
         ../../Source/MediaInfo/Archive/File_Iso9660.h \
+        ../../Source/MediaInfo/Archive/File_MacO.h \
         ../../Source/MediaInfo/Archive/File_Mz.h \
         ../../Source/MediaInfo/Archive/File_Rar.h \
         ../../Source/MediaInfo/Archive/File_Tar.h \
@@ -64,11 +65,13 @@ HEADERS += \
         ../../Source/MediaInfo/Audio/File_Caf.h \
         ../../Source/MediaInfo/Audio/File_Celt.h \
         ../../Source/MediaInfo/Audio/File_ChannelGrouping.h \
+        ../../Source/MediaInfo/Audio/File_Dat.h \
         ../../Source/MediaInfo/Audio/File_DolbyE.h \
         ../../Source/MediaInfo/Audio/File_Dts.h \
         ../../Source/MediaInfo/Audio/File_DtsUhd.h \
         ../../Source/MediaInfo/Audio/File_ExtendedModule.h \
         ../../Source/MediaInfo/Audio/File_Flac.h \
+        ../../Source/MediaInfo/Audio/File_Iamf.h \
         ../../Source/MediaInfo/Audio/File_ImpulseTracker.h \
         ../../Source/MediaInfo/Audio/File_La.h \
         ../../Source/MediaInfo/Audio/File_Mga.h \
@@ -178,6 +181,7 @@ HEADERS += \
         ../../Source/MediaInfo/Multiple/File_MpegPs.h \
         ../../Source/MediaInfo/Multiple/File_MpegTs.h \
         ../../Source/MediaInfo/Multiple/File_Mxf.h \
+        ../../Source/MediaInfo/Multiple/File_Mxf_Automated.h \
         ../../Source/MediaInfo/Multiple/File_Nut.h \
         ../../Source/MediaInfo/Multiple/File_Ogg.h \
         ../../Source/MediaInfo/Multiple/File_Ogg_SubElement.h \
@@ -210,6 +214,7 @@ HEADERS += \
         ../../Source/MediaInfo/Tag/File_Lyrics3v2.h \
         ../../Source/MediaInfo/Tag/File_PropertyList.h \
         ../../Source/MediaInfo/Tag/File_VorbisCom.h \
+        ../../Source/MediaInfo/Tag/File_SphericalVideo.h \
         ../../Source/MediaInfo/Tag/File_Xmp.h \
         ../../Source/MediaInfo/Text/File_AribStdB24B37.h \
         ../../Source/MediaInfo/Text/File_Cdp.h \
@@ -221,6 +226,8 @@ HEADERS += \
         ../../Source/MediaInfo/Text/File_Kate.h \
         ../../Source/MediaInfo/Text/File_N19.h \
         ../../Source/MediaInfo/Text/File_OtherText.h \
+        ../../Source/MediaInfo/Text/File_Pac.h \
+        ../../Source/MediaInfo/Text/File_Pac_Codepages.h \
         ../../Source/MediaInfo/Text/File_Pdf.h \
         ../../Source/MediaInfo/Text/File_Pgs.h \
         ../../Source/MediaInfo/Text/File_Scc.h \
@@ -235,12 +242,14 @@ HEADERS += \
         ../../Source/MediaInfo/Video/File_Aic.h \
         ../../Source/MediaInfo/Video/File_Avc.h \
         ../../Source/MediaInfo/Video/File_AvsV.h \
+        ../../Source/MediaInfo/Video/File_Avs3V.h \
         ../../Source/MediaInfo/Video/File_Canopus.h \
         ../../Source/MediaInfo/Video/File_Dirac.h \
         ../../Source/MediaInfo/Video/File_Ffv1.h \
         ../../Source/MediaInfo/Video/File_Flic.h \
         ../../Source/MediaInfo/Video/File_Fraps.h \
         ../../Source/MediaInfo/Video/File_H263.h \
+        ../../Source/MediaInfo/Video/File_HdrVividMetadata.h \
         ../../Source/MediaInfo/Video/File_Hevc.h \
         ../../Source/MediaInfo/Video/File_HuffYuv.h \
         ../../Source/MediaInfo/Video/File_Lagarith.h \
@@ -252,9 +261,11 @@ HEADERS += \
         ../../Source/MediaInfo/Video/File_Vc3.h \
         ../../Source/MediaInfo/Video/File_Vp8.h \
         ../../Source/MediaInfo/Video/File_Vp9.h \
+        ../../Source/MediaInfo/Video/File_Vvc.h \
         ../../Source/MediaInfo/Video/File_Y4m.h \
         ../../Source/MediaInfo/XmlUtils.h \
-        ../../Source/MediaInfo/OutputHelpers.h
+        ../../Source/MediaInfo/OutputHelpers.h \
+        ../../Source/MediaInfo/ExternalCommandHelpers.h
 
 SOURCES += \
         ../../Source/MediaInfo/Archive/File_7z.cpp \
@@ -263,6 +274,7 @@ SOURCES += \
         ../../Source/MediaInfo/Archive/File_Elf.cpp \
         ../../Source/MediaInfo/Archive/File_Gzip.cpp \
         ../../Source/MediaInfo/Archive/File_Iso9660.cpp \
+        ../../Source/MediaInfo/Archive/File_MacO.cpp \
         ../../Source/MediaInfo/Archive/File_Mz.cpp \
         ../../Source/MediaInfo/Archive/File_Rar.cpp \
         ../../Source/MediaInfo/Archive/File_Tar.cpp \
@@ -287,6 +299,7 @@ SOURCES += \
         ../../Source/MediaInfo/Audio/File_Celt.cpp \
         ../../Source/MediaInfo/Audio/File_ChannelGrouping.cpp \
         ../../Source/MediaInfo/Audio/File_ChannelSplitting.cpp \
+        ../../Source/MediaInfo/Audio/File_Dat.cpp \
         ../../Source/MediaInfo/Audio/File_Dsdiff.cpp \
         ../../Source/MediaInfo/Audio/File_Dsf.cpp \
         ../../Source/MediaInfo/Audio/File_Dts.cpp \
@@ -295,6 +308,7 @@ SOURCES += \
         ../../Source/MediaInfo/Audio/File_DolbyE.cpp \
         ../../Source/MediaInfo/Audio/File_ExtendedModule.cpp \
         ../../Source/MediaInfo/Audio/File_Flac.cpp \
+        ../../Source/MediaInfo/Audio/File_Iamf.cpp \
         ../../Source/MediaInfo/Audio/File_Iab.cpp \
         ../../Source/MediaInfo/Audio/File_ImpulseTracker.cpp \
         ../../Source/MediaInfo/Audio/File_La.cpp \
@@ -362,6 +376,7 @@ SOURCES += \
         ../../Source/MediaInfo/Image/File_Rle.cpp \
         ../../Source/MediaInfo/Image/File_Tiff.cpp \
         ../../Source/MediaInfo/Image/File_Tga.cpp \
+        ../../Source/MediaInfo/Image/File_WebP.cpp \
         ../../Source/MediaInfo/MediaInfo.cpp \
         ../../Source/MediaInfo/MediaInfo_Config.cpp \
         ../../Source/MediaInfo/MediaInfo_Config_Automatic.cpp \
@@ -436,12 +451,14 @@ SOURCES += \
         ../../Source/MediaInfo/Reader/Reader_libmms.cpp \
         ../../Source/MediaInfo/Tag/File__Tags.cpp \
         ../../Source/MediaInfo/Tag/File_ApeTag.cpp \
+        ../../Source/MediaInfo/Tag/File_Icc.cpp \
         ../../Source/MediaInfo/Tag/File_Id3.cpp \
         ../../Source/MediaInfo/Tag/File_Id3v2.cpp \
         ../../Source/MediaInfo/Tag/File_Lyrics3.cpp \
         ../../Source/MediaInfo/Tag/File_Lyrics3v2.cpp \
         ../../Source/MediaInfo/Tag/File_PropertyList.cpp \
         ../../Source/MediaInfo/Tag/File_VorbisCom.cpp \
+        ../../Source/MediaInfo/Tag/File_SphericalVideo.cpp \
         ../../Source/MediaInfo/Tag/File_Xmp.cpp \
         ../../Source/MediaInfo/Text/File_AribStdB24B37.cpp \
         ../../Source/MediaInfo/Text/File_Cdp.cpp \
@@ -453,6 +470,7 @@ SOURCES += \
         ../../Source/MediaInfo/Text/File_Kate.cpp \
         ../../Source/MediaInfo/Text/File_N19.cpp \
         ../../Source/MediaInfo/Text/File_OtherText.cpp \
+        ../../Source/MediaInfo/Text/File_Pac.cpp \
         ../../Source/MediaInfo/Text/File_Pdf.cpp \
         ../../Source/MediaInfo/Text/File_Pgs.cpp \
         ../../Source/MediaInfo/Text/File_Scc.cpp \
@@ -468,6 +486,7 @@ SOURCES += \
         ../../Source/MediaInfo/Video/File_Avc.cpp \
         ../../Source/MediaInfo/Video/File_Avc_Duplicate.cpp \
         ../../Source/MediaInfo/Video/File_AvsV.cpp \
+        ../../Source/MediaInfo/Video/File_Avs3V.cpp \
         ../../Source/MediaInfo/Video/File_Canopus.cpp \
         ../../Source/MediaInfo/Video/File_CineForm.cpp \
         ../../Source/MediaInfo/Video/File_Dirac.cpp \
@@ -476,6 +495,7 @@ SOURCES += \
         ../../Source/MediaInfo/Video/File_Flic.cpp \
         ../../Source/MediaInfo/Video/File_Fraps.cpp \
         ../../Source/MediaInfo/Video/File_H263.cpp \
+        ../../Source/MediaInfo/Video/File_HdrVividMetadata.cpp \
         ../../Source/MediaInfo/Video/File_Hevc.cpp \
         ../../Source/MediaInfo/Video/File_HuffYuv.cpp \
         ../../Source/MediaInfo/Video/File_Lagarith.cpp \
@@ -487,12 +507,15 @@ SOURCES += \
         ../../Source/MediaInfo/Video/File_Vc3.cpp \
         ../../Source/MediaInfo/Video/File_Vp8.cpp \
         ../../Source/MediaInfo/Video/File_Vp9.cpp \
+        ../../Source/MediaInfo/Video/File_Vvc.cpp \
         ../../Source/MediaInfo/Video/File_Y4m.cpp \
         ../../Source/MediaInfo/XmlUtils.cpp \
-        ../../Source/MediaInfo/OutputHelpers.cpp
+        ../../Source/MediaInfo/OutputHelpers.cpp \
+        ../../Source/MediaInfo/ExternalCommandHelpers.cpp
 
 SOURCES += \
         ../../Source/ThirdParty/aes-gladman/aes_modes.c \
+        ../../Source/ThirdParty/aes-gladman/aes_ni.c \
         ../../Source/ThirdParty/aes-gladman/aescrypt.c \
         ../../Source/ThirdParty/aes-gladman/aeskey.c \
         ../../Source/ThirdParty/aes-gladman/aestab.c \

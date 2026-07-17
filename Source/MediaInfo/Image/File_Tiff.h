@@ -57,7 +57,11 @@ private :
     ifditems IfdItems;
     typedef std::map<int16u, ZtringList> infos; //Key is Tag value
     infos Infos;
+    int64u ExpectedFileSize;
     bool LittleEndian;
+    #if defined(MEDIAINFO_ICC_YES)
+        File__Analyze* ICC_Parser;
+    #endif //defined(MEDIAINFO_ICC_YES)
 
     //Helpers
     void Get_X2 (int16u &Info, const char* Name);

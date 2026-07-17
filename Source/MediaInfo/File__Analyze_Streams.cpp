@@ -68,7 +68,7 @@ inline void add_dec_2chars(string& In, uint8_t Value)
         Value=(uint8_t)Value100.rem;
         In+='0'+Value100.quot;
     }
-    In.append(add_dec_cache+(Value<<1), 2);
+    In.append(add_dec_cache+((size_t)Value<<1), 2);
 }
 
 //---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ bool DateTime_Adapt(string& Value_)
         IsUtc = false;
     
     // Unix style
-    if (Value.size() < 4)
+    if (Value.size() < 5)
         return false;
     if (Value[4]!='-')
     {
@@ -421,18 +421,38 @@ void File__Analyze::Get_MasteringDisplayColorVolume(Ztring &MasteringDisplay_Col
 #endif
 
 //---------------------------------------------------------------------------
+const char* DolbyVision_Compatibility[] =
+{
+    "",
+    "HDR10",
+    "SDR",
+    NULL,
+    "HLG",
+    NULL,
+    "Blu-ray",
+};
+static const size_t DolbyVision_Compatibility_Size = sizeof(DolbyVision_Compatibility) / sizeof(const char*);
+size_t DolbyVision_Compatibility_Pos(const Ztring& Value)
+{
+
+    for (size_t Pos = 0; Pos < DolbyVision_Compatibility_Size; Pos++)
+        if (Ztring(DolbyVision_Compatibility[Pos]) == Value)
+            return Pos;
+    return (size_t)-1;
+}
 #if defined(MEDIAINFO_AV1_YES) || defined(MEDIAINFO_AVC_YES) || defined(MEDIAINFO_HEVC_YES) || defined(MEDIAINFO_MPEG4_YES) || defined(MEDIAINFO_MATROSKA_YES) || defined(MEDIAINFO_MXF_YES)
 enum class dolbyvision_profile : uint8_t
 {
     dav1,
     davc,
     dvav,
+    dvh1,
     dvh8,
     dvhe,
     max,
 };
 static const char DolbyVision_Profiles_Names[] = // dv[BL_codec_type].[number_of_layers][bit_depth][cross-compatibility]
-"dav1davcdvavdvh8dvhe";
+"dav1davcdvavdvh1dvh8dvhe";
 static_assert(sizeof(DolbyVision_Profiles_Names)==4*((size_t)dolbyvision_profile::max)+1, "");
 static dolbyvision_profile DolbyVision_Profiles[]=
 {
@@ -456,7 +476,7 @@ static dolbyvision_profile DolbyVision_Profiles[]=
     dolbyvision_profile::max,
     dolbyvision_profile::max,
     dolbyvision_profile::max,
-    dolbyvision_profile::max,
+    dolbyvision_profile::dvh1,
     dolbyvision_profile::max,
     dolbyvision_profile::max,
     dolbyvision_profile::max,
@@ -484,26 +504,22 @@ static void DolbyVision_Profiles_Append(string& Profile, int8u i)
         return add_dec_2chars(Profile, i);
     Profile.append(DolbyVision_Profiles_Names+((size_t)j)*4, 4);
 }
-extern const char* DolbyVision_Compatibility[] =
+const char* DolbyVision_Compression[] =
 {
-    "",
-    "HDR10",
-    "SDR",
+    "None",
+    "Limited",
     NULL,
-    "HLG",
-    NULL,
-    "Blu-ray",
+    "Extended",
 };
-static const size_t DolbyVision_Compatibility_Size=sizeof(DolbyVision_Compatibility)/sizeof(const char*);
 void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>* Infos)
 {
     Element_Name("Dolby Vision Configuration");
 
     //Parsing
-    int8u  dv_version_major, dv_version_minor, dv_profile, dv_level, dv_bl_signal_compatibility_id;
+    int8u  dv_version_major, dv_version_minor, dv_profile, dv_level, dv_bl_signal_compatibility_id, dv_md_compression;
     bool rpu_present_flag, el_present_flag, bl_present_flag;
     Get_B1 (dv_version_major,                                   "dv_version_major");
-    if (dv_version_major && dv_version_major<=2) //Spec says nothing, we hope that a minor version change means that the stream is backward compatible
+    if (dv_version_major && dv_version_major<=3) //Spec says nothing, we hope that a minor version change means that the stream is backward compatible
     {
         Get_B1 (dv_version_minor,                               "dv_version_minor");
         BS_Begin();
@@ -525,11 +541,15 @@ void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>*
         if (Data_BS_Remain())
         {
             Get_S1 (4, dv_bl_signal_compatibility_id,           "dv_bl_signal_compatibility_id"); // in dv_version_major 2 only if based on specs but it was confirmed to be seen in dv_version_major 1 too and it does not hurt (value 0 means no new display)
+            Get_S1 (2, dv_md_compression,                       "dv_md_compression");
             if (End<Data_BS_Remain())
                 Skip_BS(Data_BS_Remain()-End,                   "reserved");
         }
         else
+        {
             dv_bl_signal_compatibility_id=0;
+            dv_md_compression=0;
+        }
         BS_End();
     }
     Skip_XX(Element_Size-Element_Offset,                        "Unknown");
@@ -539,13 +559,13 @@ void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>*
             (*Infos)["HDR_Format"].From_UTF8("Dolby Vision");
         else
             Fill(Stream_Video, StreamPos_Last, Video_HDR_Format, "Dolby Vision");
-        if (dv_version_major && dv_version_major<=2)
+        if (dv_version_major && dv_version_major<=3)
         {
-            Ztring Summary=Ztring::ToZtring(dv_version_major)+__T('.')+Ztring::ToZtring(dv_version_minor);
+            Ztring Version=Ztring::ToZtring(dv_version_major)+__T('.')+Ztring::ToZtring(dv_version_minor);
             if (Infos)
-                (*Infos)["HDR_Format_Version"]=Summary;
+                (*Infos)["HDR_Format_Version"]=Version;
             else
-                Fill(Stream_Video, StreamPos_Last, Video_HDR_Format_Version, Summary);
+                Fill(Stream_Video, StreamPos_Last, Video_HDR_Format_Version, Version);
             string Profile, Level;
             DolbyVision_Profiles_Append(Profile, dv_profile);
             Profile+='.';
@@ -561,17 +581,10 @@ void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>*
                 Fill(Stream_Video, StreamPos_Last, Video_HDR_Format_Profile, Profile);
                 Fill(Stream_Video, StreamPos_Last, Video_HDR_Format_Level, Level);
             }
-            Summary += __T(',');
-            Summary+=__T(' ');
-            Summary+=Ztring().From_UTF8(Profile);
-            Summary+=__T('.');
-            Summary+=Ztring().From_UTF8(Level);
 
             string Layers;
-            if (rpu_present_flag|el_present_flag|bl_present_flag)
+            if (rpu_present_flag||el_present_flag||bl_present_flag)
             {
-                Summary+=',';
-                Summary+=' ';
                 if (bl_present_flag)
                     Layers +="BL+";
                 if (el_present_flag)
@@ -579,7 +592,13 @@ void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>*
                 if (rpu_present_flag)
                     Layers +="RPU+";
                 Layers.resize(Layers.size()-1);
-                Summary+=Ztring().From_UTF8(Layers);
+            }
+            if (DolbyVision_Compression[dv_md_compression])
+            {
+                if (Infos)
+                    (*Infos)["HDR_Format_Compression"].From_UTF8(DolbyVision_Compression[dv_md_compression]);
+                else
+                    Fill(Stream_Video, StreamPos_Last, Video_HDR_Format_Compression, DolbyVision_Compression[dv_md_compression]);
             }
             if (Infos)
                 (*Infos)["HDR_Format_Settings"].From_UTF8(Layers);
@@ -609,17 +628,32 @@ void File__Analyze::dvcC(bool has_dependency_pid, std::map<std::string, Ztring>*
 
 //---------------------------------------------------------------------------
 #if defined(MEDIAINFO_AV1_YES) || defined(MEDIAINFO_AVC_YES) || defined(MEDIAINFO_HEVC_YES) || defined(MEDIAINFO_MPEG4_YES)
-void File__Analyze::Get_LightLevel(Ztring &MaxCLL, Ztring &MaxFALL)
+void File__Analyze::Get_LightLevel(Ztring &MaxCLL, Ztring &MaxFALL, int32u Divisor)
 {
     //Parsing
-    int16u maximum_content_light_level, maximum_frame_average_light_level;
-    Get_B2(maximum_content_light_level,                         "maximum_content_light_level");
-    Get_B2(maximum_frame_average_light_level,                   "maximum_frame_average_light_level");
+    if (Divisor-1)
+    {
+        int32u maximum_content_light_level, maximum_frame_average_light_level;
+        Get_B4 (maximum_content_light_level,                    "maximum_content_light_level");
+        Get_B4 (maximum_frame_average_light_level,              "maximum_frame_average_light_level");
 
-    if (maximum_content_light_level)
-        MaxCLL=Ztring::ToZtring(maximum_content_light_level)+__T(" cd/m2");
-    if (maximum_frame_average_light_level)
-        MaxFALL=Ztring::ToZtring(maximum_frame_average_light_level)+__T(" cd/m2");
+        auto Decimals=to_string(Divisor).size()-1;
+        if (maximum_content_light_level)
+            MaxCLL=Ztring::ToZtring(((float32)maximum_content_light_level)/Divisor, Decimals)+__T(" cd/m2");
+        if (maximum_frame_average_light_level)
+            MaxFALL=Ztring::ToZtring(((float32)maximum_frame_average_light_level)/Divisor, Decimals)+__T(" cd/m2");
+    }
+    else
+    {
+        int16u maximum_content_light_level, maximum_frame_average_light_level;
+        Get_B2 (maximum_content_light_level,                    "maximum_content_light_level");
+        Get_B2 (maximum_frame_average_light_level,              "maximum_frame_average_light_level");
+
+        if (maximum_content_light_level)
+            MaxCLL=Ztring::ToZtring(maximum_content_light_level)+__T(" cd/m2");
+        if (maximum_frame_average_light_level)
+            MaxFALL=Ztring::ToZtring(maximum_frame_average_light_level)+__T(" cd/m2");
+    }
 }
 #endif
 
@@ -631,7 +665,7 @@ void File__Analyze::Get_LightLevel(Ztring &MaxCLL, Ztring &MaxFALL)
 size_t File__Analyze::Stream_Prepare (stream_t KindOfStream, size_t StreamPos)
 {
     //Integrity
-    if (KindOfStream>Stream_Max)
+    if (KindOfStream<0 || KindOfStream>Stream_Max)
         return Error;
 
     //Clear
@@ -917,11 +951,32 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, size_t Paramete
     //MergedStreams
     if (FillAllMergedStreams)
     {
-        FillAllMergedStreams=false;
-        size_t s = MergedStreams_Last.size();
-        for (size_t i=0; i<s; ++i)
-            Fill(MergedStreams_Last[i].StreamKind, MergedStreams_Last[i].StreamPos, Parameter, Value, Replace);
-        FillAllMergedStreams=true;
+        for (size_t i=0; sizeof(generic); i++)
+            if (Fill_Parameter(StreamKind, (generic)i)==Parameter)
+            {
+                generic Parameter2=(generic)i;
+                FillAllMergedStreams=false;
+                Ztring ID=Retrieve(StreamKind, StreamPos, General_ID); //TODO: find a better to catch content from same stream
+                auto ID_Dash_Pos=ID.find(__T("-"));
+                if (ID_Dash_Pos!=string::npos)
+                    ID.resize(ID_Dash_Pos);
+                for (size_t StreamKind2=Stream_Audio; StreamKind2<Stream_Max; StreamKind2++)
+                    for (size_t StreamPos2=0; StreamPos2<(*Stream)[StreamKind2].size(); StreamPos2++)
+                    {
+                        Ztring ID2=Retrieve((stream_t)StreamKind2, StreamPos2, General_ID);
+                        auto ID2_Dash_Pos=ID2.find(__T("-"));
+                        if (ID2_Dash_Pos!=string::npos && ID2.substr(ID2_Dash_Pos)!=__T("-Material"))
+                            ID2.resize(ID2_Dash_Pos);
+                        if (ID2==ID)
+                        {
+                            size_t Parameter3=Fill_Parameter((stream_t)StreamKind2, Parameter2);
+                            if (Parameter3!=(size_t)-1)
+                                Fill((stream_t)StreamKind2, StreamPos2, Parameter3, Value, Replace);
+                        }
+                    }
+                FillAllMergedStreams=true;
+                break;
+            }
         return;
     }
 
@@ -945,7 +1000,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, size_t Paramete
         "ContainerExtra",
     };
     assert(sizeof(SourceValue)==StreamSource_Max*sizeof(const char*));
-    if (StreamKind==Stream_Video && ShowSource_IsInList((video)Parameter) && StreamSource<StreamSource_Max && Retrieve_Const(Stream_Video, StreamPos, Parameter+1).empty())
+    if (StreamKind==Stream_Video && ShowSource_IsInList((video)Parameter) && StreamSource>=0 && StreamSource<StreamSource_Max && Retrieve_Const(Stream_Video, StreamPos, Parameter+1).empty())
     {
         Fill(Stream_Video, StreamPos, Parameter+1, SourceValue[StreamSource]);
     }
@@ -999,7 +1054,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, size_t Paramete
     if (StreamKind==Stream_Max || StreamPos>=(*Stream)[StreamKind].size())
     {
         size_t StreamKindS=(size_t)StreamKind;
-        if (StreamKind!=Stream_Max)
+        if (StreamKind>=0 && StreamKind!=Stream_Max)
         {
             //Stream kind is found, moving content
             for (size_t Pos=0; Pos<Fill_Temp[Stream_Max].size(); Pos++)
@@ -1069,6 +1124,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, size_t Paramete
                                 case Video_Width:   if (StreamSource==IsStream) Fill(Stream_Video, StreamPos, Video_Sampled_Width, Value); break;
                                 case Video_Height:  if (StreamSource==IsStream) Fill(Stream_Video, StreamPos, Video_Sampled_Height, Value); break;
                                 case Video_DisplayAspectRatio:  DisplayAspectRatio_Fill(Value, Stream_Video, StreamPos, Video_Width, Video_Height, Video_PixelAspectRatio, Video_DisplayAspectRatio); break;
+                                case Video_Active_DisplayAspectRatio:  DisplayAspectRatio_Fill(Value, Stream_Video, StreamPos, Video_Active_Width, Video_Active_Height, Video_PixelAspectRatio, Video_Active_DisplayAspectRatio); break;
                                 case Video_PixelAspectRatio:    PixelAspectRatio_Fill(Value, Stream_Video, StreamPos, Video_Width, Video_Height, Video_PixelAspectRatio, Video_DisplayAspectRatio);   break;
                                 case Video_DisplayAspectRatio_CleanAperture:  DisplayAspectRatio_Fill(Value, Stream_Video, StreamPos, Video_Width_CleanAperture, Video_Height_CleanAperture, Video_PixelAspectRatio_CleanAperture, Video_DisplayAspectRatio_CleanAperture); break;
                                 case Video_PixelAspectRatio_CleanAperture:    PixelAspectRatio_Fill(Value, Stream_Video, StreamPos, Video_Width_CleanAperture, Video_Height_CleanAperture, Video_PixelAspectRatio_CleanAperture, Video_DisplayAspectRatio_CleanAperture);   break;
@@ -1134,6 +1190,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, size_t Paramete
                             switch (Parameter)
                             {
                                 case Image_DisplayAspectRatio:  DisplayAspectRatio_Fill(Value, Stream_Image, StreamPos, Image_Width, Image_Height, Image_PixelAspectRatio, Image_DisplayAspectRatio); break;
+                                case Image_Active_DisplayAspectRatio:  DisplayAspectRatio_Fill(Value, Stream_Image, StreamPos, Image_Active_Width, Image_Active_Height, Image_PixelAspectRatio, Image_Active_DisplayAspectRatio); break;
                                 case Image_PixelAspectRatio:    PixelAspectRatio_Fill(Value, Stream_Image, StreamPos, Image_Width, Image_Height, Image_PixelAspectRatio, Image_DisplayAspectRatio);   break;
                                 case Image_DisplayAspectRatio_Original:  DisplayAspectRatio_Fill(Value, Stream_Image, StreamPos, Image_Width_Original, Image_Height_Original, Image_PixelAspectRatio_Original, Image_DisplayAspectRatio_Original); break;
                                 case Image_PixelAspectRatio_Original:    PixelAspectRatio_Fill(Value, Stream_Image, StreamPos, Image_Width_Original, Image_Height_Original, Image_PixelAspectRatio_Original, Image_DisplayAspectRatio_Original);   break;
@@ -1680,7 +1737,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, const char* Par
     if (StreamKind==Stream_Max || StreamPos>=(*Stream)[StreamKind].size())
     {
         size_t StreamKindS=(size_t)StreamKind;
-        if (StreamKind!=Stream_Max)
+        if (StreamKind>=0 && StreamKind!=Stream_Max)
         {
             //Stream kind is found, moving content
             for (size_t Pos=0; Pos<Fill_Temp[Stream_Max].size(); Pos++)
@@ -1723,7 +1780,7 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, const char* Par
 
     if (StreamKind==Stream_Other && !strcmp(Parameter, "Codec"))
         return; // "Codec" does not exist in "Other"
-    
+
     //Handling of unknown parameters
     ZtringListList& Stream_More_Item = (*Stream_More)[StreamKind][StreamPos];
     const Ztring Parameter_ISO = Ztring().From_ISO_8859_1(Parameter);
@@ -1745,33 +1802,52 @@ void File__Analyze::Fill (stream_t StreamKind, size_t StreamPos, const char* Par
             Ztring ToSearch=Parameter_ISO.substr(0, Space);
             for (size_t i=0; i<Stream_More_Item.size(); i++)
             {
-                if (Stream_More_Item(i, Info_Name) == Parameter_ISO)
+                const auto& Item=Stream_More_Item[i][Info_Name];
+                if (Item==Parameter_ISO)
                 {
                     LastFound=(size_t)-1;
                     break;
                 }
-                if (Stream_More_Item(i, Info_Name).rfind(ToSearch, ToSearch.size())==0 && (Stream_More_Item(i, Info_Name).size()==ToSearch.size() || Stream_More_Item(i, Info_Name)[ToSearch.size()]==__T(' ')))
+                if (Item.rfind(ToSearch, 0)==0 && (Item.size()==ToSearch.size() || Item[ToSearch.size()]==__T(' ')))
                     LastFound=i;
             }
             if (LastFound!=(size_t)-1)
             {
-                ZtringList ToInsert;
-                ToInsert(Info_Name)=Parameter_ISO;
-                Stream_More_Item.insert(Stream_More_Item.begin()+LastFound+1, ToInsert);
+                auto& Line=*Stream_More_Item.insert(Stream_More_Item.begin()+LastFound+1, ZtringList());
+                Line.resize(max(max(Info_Name, Info_Text),max(Info_Options,Info_Name_Text))+1);
+                Line[Info_Name]=Parameter_ISO;
+                Line[Info_Text]=Value;
+                Line[Info_Options]=__T("Y NT");
+                Line[Info_Name_Text]=MediaInfoLib::Config.Language_Get(Parameter_Local);
+                return;
             }
         }
 
-        Ztring &Target= Stream_More_Item(Parameter_ISO, Info_Text);
-        if (Target.empty() || Replace)
+        auto TargetFind=[&Parameter_ISO](const ZtringList& Line) { return !Line.empty() && Line[0] == Parameter_ISO; };
+        auto Target=find_if(Stream_More_Item.begin(), Stream_More_Item.end(), TargetFind);
+        if (Target==Stream_More_Item.end())
         {
-            Target=Value; //First value
-            Stream_More_Item(Parameter_ISO, Info_Name_Text)=MediaInfoLib::Config.Language_Get(Parameter_Local);
-            Fill_SetOptions(StreamKind, StreamPos, Parameter, "Y NT");
+            size_t Pos=Stream_More_Item.size();
+            Stream_More_Item.resize(Pos+1);
+            auto& Line=Stream_More_Item.back();
+            Line.resize(max(max(Info_Name, Info_Text),max(Info_Options,Info_Name_Text))+1);
+            Line[Info_Name]=Parameter_ISO;
+            Line[Info_Text]=Value;
+            Line[Info_Options]=__T("Y NT");
+            Line[Info_Name_Text]=MediaInfoLib::Config.Language_Get(Parameter_Local);
         }
         else
         {
-            Target+=MediaInfoLib::Config.TagSeparator_Get();
-            Target+=Value;
+            auto& Item=(*Target)(Info_Text);
+            if (Item.empty() || Replace)
+            {
+                Item=Value;
+            }
+            else
+            {
+                Item+=MediaInfoLib::Config.TagSeparator_Get();
+                Item+=Value;
+            }
         }
     }
     Fill(StreamKind, StreamPos, (size_t)General_Count, Count_Get(StreamKind, StreamPos), 10, true);
@@ -1812,7 +1888,7 @@ void File__Analyze::Fill_SetOptions(stream_t StreamKind, size_t StreamPos, const
         return;
 
     //Handle Value before StreamKind
-    if (!Status[IsAccepted] || StreamKind==Stream_Max || StreamPos>=(*Stream)[StreamKind].size())
+    if (StreamKind>=0 && (StreamKind==Stream_Max || StreamPos>=(*Stream)[StreamKind].size()))
     {
         Fill_Temp_Options[StreamKind][Parameter]=Options;
         return; //No streams
@@ -1837,7 +1913,7 @@ const Ztring &File__Analyze::Retrieve_Const (stream_t StreamKind, size_t StreamP
      || StreamPos>=(*Stream)[StreamKind].size()
      || Parameter>=MediaInfoLib::Config.Info_Get(StreamKind).size()+(*Stream_More)[StreamKind][StreamPos].size())
     {
-        if (StreamKind<sizeof(Fill_Temp)/sizeof(vector<fill_temp_item>))
+        if ((size_t)StreamKind<sizeof(Fill_Temp)/sizeof(*Fill_Temp))
         {
             Ztring Parameter_Local;
             Parameter_Local.From_Number(Parameter);
@@ -2149,15 +2225,12 @@ size_t File__Analyze::Merge(MediaInfo_Internal &ToAdd, stream_t StreamKind, size
 //---------------------------------------------------------------------------
 size_t File__Analyze::Merge(File__Analyze &ToAdd, bool Erase)
 {
-    MergedStreams_Last.clear();
-
     size_t Count=0;
     for (size_t StreamKind=(size_t)Stream_General+1; StreamKind<(size_t)Stream_Max; StreamKind++)
         for (size_t StreamPos=0; StreamPos<(*ToAdd.Stream)[StreamKind].size(); StreamPos++)
         {
             //Prepare a new stream
             Stream_Prepare((stream_t)StreamKind);
-            MergedStreams_Last.push_back(streamidentity(StreamKind_Last, StreamPos_Last));
 
             //Merge
             Merge(ToAdd, (stream_t)StreamKind, StreamPos, StreamPos_Last, Erase);
@@ -2179,7 +2252,7 @@ size_t File__Analyze::Merge(File__Analyze &ToAdd, stream_t StreamKind, size_t St
         Stream_Prepare(StreamKind);
 
     //Specific stuff
-    Ztring Width_Temp, Height_Temp, PixelAspectRatio_Temp, DisplayAspectRatio_Temp, FrameRate_Temp, FrameRate_Num_Temp, FrameRate_Den_Temp, FrameRate_Mode_Temp, ScanType_Temp, ScanOrder_Temp, HDR_Temp[Video_HDR_Format_Compatibility-Video_HDR_Format+1], Channels_Temp[4], Delay_Temp, Delay_DropFrame_Temp, Delay_Source_Temp, Delay_Settings_Temp, Source_Temp, Source_Kind_Temp, Source_Info_Temp;
+    Ztring Width_Temp, Height_Temp, PixelAspectRatio_Temp, DisplayAspectRatio_Temp, FrameRate_Temp, FrameRate_Num_Temp, FrameRate_Den_Temp, FrameRate_Mode_Temp, ScanType_Temp, ScanOrder_Temp, HDR_Temp[Video_HDR_Format_Compatibility-Video_HDR_Format+1], Channels_Temp[4], Delay_Temp, Delay_DropFrame_Temp, Delay_Source_Temp, Delay_Settings_Temp, Source_Temp, Source_Kind_Temp, Source_Info_Temp, ColorSpace_Temp;
     if (StreamKind==Stream_Video)
     {
         Width_Temp=Retrieve(Stream_Video, StreamPos_To, Video_Width);
@@ -2192,6 +2265,7 @@ size_t File__Analyze::Merge(File__Analyze &ToAdd, stream_t StreamKind, size_t St
         FrameRate_Mode_Temp=Retrieve(Stream_Video, StreamPos_To, Video_FrameRate_Mode); //We want to keep the FrameRate_Mode of AVI 120 fps
         ScanType_Temp=Retrieve(Stream_Video, StreamPos_To, Video_ScanType);
         ScanOrder_Temp=Retrieve(Stream_Video, StreamPos_To, Video_ScanOrder);
+        ColorSpace_Temp=Retrieve(Stream_Video, StreamPos_To, Video_ColorSpace);
         for (size_t i=Video_HDR_Format; i<=Video_HDR_Format_Compatibility; i++)
             HDR_Temp[i-Video_HDR_Format]=Retrieve(Stream_Video, StreamPos_To, i);
     }
@@ -2208,6 +2282,10 @@ size_t File__Analyze::Merge(File__Analyze &ToAdd, stream_t StreamKind, size_t St
         FrameRate_Num_Temp=Retrieve(Stream_Text, StreamPos_To, Text_FrameRate_Num);
         FrameRate_Den_Temp=Retrieve(Stream_Text, StreamPos_To, Text_FrameRate_Den);
         FrameRate_Mode_Temp=Retrieve(Stream_Text, StreamPos_To, Text_FrameRate_Mode);
+    }
+    if (StreamKind==Stream_Image)
+    {
+        ColorSpace_Temp=Retrieve(Stream_Image, StreamPos_To, Image_ColorSpace);
     }
     if (ToAdd.Retrieve(StreamKind, StreamPos_From, Fill_Parameter(StreamKind, Generic_Delay_Source))==__T("Container"))
     {
@@ -2348,6 +2426,11 @@ size_t File__Analyze::Merge(File__Analyze &ToAdd, stream_t StreamKind, size_t St
             else
                 Fill(Stream_Video, StreamPos_To, Video_ScanOrder, ScanOrder_Temp, true);
         }
+        if (!ColorSpace_Temp.empty() && ColorSpace_Temp!=Retrieve(Stream_Video, StreamPos_To, Video_ColorSpace) && ColorSpace_Temp.rfind(Retrieve(Stream_Video, StreamPos_To, Video_ColorSpace), 0) && Retrieve(Stream_Video, StreamPos_To, Video_ColorSpace).rfind(ColorSpace_Temp, 0)) // e.g. RGB ICC for RGBA
+        {
+            Fill(Stream_Video, StreamPos_To, "ColorSpace_Original", Retrieve(StreamKind, StreamPos_To, Video_ColorSpace), true);
+            Fill(Stream_Video, StreamPos_To, Video_ColorSpace, ColorSpace_Temp, true);
+        }
         if (!HDR_Temp[0].empty() && !ToAdd.Retrieve_Const(Stream_Video, StreamPos_From, Video_HDR_Format).empty() && HDR_Temp[0]!=ToAdd.Retrieve_Const(Stream_Video, StreamPos_From, Video_HDR_Format))
         {
             for (size_t i=Video_HDR_Format; i<=Video_HDR_Format_Compatibility; i++)
@@ -2429,6 +2512,19 @@ size_t File__Analyze::Merge(File__Analyze &ToAdd, stream_t StreamKind, size_t St
         {
             Fill(Stream_Text, StreamPos_To, Text_FrameRate_Mode_Original, (*Stream)[Stream_Text][StreamPos_To][Text_FrameRate_Mode], true);
             Fill(Stream_Text, StreamPos_To, Text_FrameRate_Mode, FrameRate_Mode_Temp, true);
+        }
+    }
+    if (StreamKind==Stream_Image)
+    {
+        if (!ColorSpace_Temp.empty() && ColorSpace_Temp!=Retrieve(Stream_Image, StreamPos_To, Image_ColorSpace) && ColorSpace_Temp.rfind(Retrieve(Stream_Image, StreamPos_To, Image_ColorSpace), 0) && Retrieve(Stream_Image, StreamPos_To, Image_ColorSpace).rfind(ColorSpace_Temp, 0)) // e.g. RGB ICC for RGBA
+        {
+            Fill(Stream_Image, StreamPos_To, "ColorSpace_Original", Retrieve(StreamKind, StreamPos_To, Image_ColorSpace), true);
+            Fill(Stream_Image, StreamPos_To, Image_ColorSpace, ColorSpace_Temp, true);
+        }
+        Ztring ColorSpace_ICC=Retrieve(Stream_Image, StreamPos_To, "ColorSpace_ICC");
+        if (!ColorSpace_Temp.empty() && ColorSpace_Temp!=ColorSpace_ICC && (!ColorSpace_Temp.rfind(ColorSpace_ICC, 0) || !ColorSpace_ICC.rfind(ColorSpace_Temp, 0))) // e.g. RGB ICC for RGBA
+        {
+            Clear(Stream_Image, StreamPos_To, "ColorSpace_ICC");
         }
     }
     if (!Delay_Source_Temp.empty() && Delay_Source_Temp!=Retrieve(StreamKind, StreamPos_To, "Delay_Source"))
@@ -2994,6 +3090,7 @@ void File__Analyze::Duration_Duration123(stream_t StreamKind, size_t StreamPos, 
                 if (!DropFrame_IsValid)
                 {
                     int32s  FrameRateI=float32_int32s(FrameRateS.To_float32());
+                    if (!(FrameRateI%30))
                     {
                         float32 FrameRateF=FrameRateS.To_float32();
                         float FrameRateF_Min=((float32)FrameRateI)/((float32)1.002);
@@ -3001,25 +3098,24 @@ void File__Analyze::Duration_Duration123(stream_t StreamKind, size_t StreamPos, 
                         if (FrameRateF>=FrameRateF_Min && FrameRateF<FrameRateF_Max)
                         {
                             // Default from user
-                            if (!DropFrame_IsValid)
-                            {
-                                #if MEDIAINFO_ADVANCED
-                                    switch (Config->File_DefaultTimeCodeDropFrame_Get())
-                                    {
-                                        case 0 :
-                                                DropFrame=false;
-                                                break;
-                                        default:
-                                                DropFrame=true;
-                                    }
-                                #else //MEDIAINFO_ADVANCED
-                                    DropFrame=true;
-                                #endif //MEDIAINFO_ADVANCED
-                            }
+                            #if MEDIAINFO_ADVANCED
+                                switch (Config->File_DefaultTimeCodeDropFrame_Get())
+                                {
+                                    case 0 :
+                                            DropFrame=false;
+                                            break;
+                                    default:
+                                            DropFrame=true;
+                                }
+                            #else //MEDIAINFO_ADVANCED
+                                DropFrame=true;
+                            #endif //MEDIAINFO_ADVANCED
                         }
                         else
                             DropFrame=false;
                     }
+                    else
+                        DropFrame=false;
                 }
 
                 TimeCode TC((int64_t)FrameCountS.To_int64s(), (uint32_t)float32_int32s(FrameRateS.To_float32()-1), TimeCode::DropFrame(DropFrame).FPS1001(FrameRateI!=FrameRateF));
@@ -3444,7 +3540,9 @@ void File__Analyze::DisplayAspectRatio_Fill(const Ztring &Value, stream_t Stream
     else if (DAR>=(float)2.15 && DAR<(float)2.22)   DARS=__T("2.2:1");
     else if (DAR>=(float)2.23 && DAR<(float)2.30)   DARS=__T("2.25:1");
     else if (DAR>=(float)2.30 && DAR<(float)2.37)   DARS=__T("2.35:1");
-    else if (DAR>=(float)2.37 && DAR<(float)2.45)   DARS=__T("2.40:1");
+    else if (DAR>=(float)2.37 && DAR<(float)2.395)  DARS=__T("2.39:1");
+    else if (DAR>=(float)2.395 && DAR<(float)2.45)  DARS=__T("2.40:1");
+    else if (DAR>=(float)0.54 && DAR<(float)0.58)   DARS=__T("9:16");
     else                                            DARS.From_Number(DAR);
       DARS.FindAndReplace(__T("."), MediaInfoLib::Config.Language_Get(__T("  Config_Text_FloatSeparator")));
     if (MediaInfoLib::Config.Language_Get(__T("  Language_ISO639"))==__T("fr") &&   DARS.find(__T(":1"))==string::npos)
@@ -3542,6 +3640,8 @@ size_t File__Analyze::Fill_Parameter(stream_t StreamKind, generic StreamPos)
                                     case Generic_Codec_Info : return Video_Codec_Info;
                                     case Generic_Codec_Url : return Video_Codec_Url;
                                     case Generic_Codec_CC : return Video_Codec_CC;
+                                    case Generic_Width: return Video_Width;
+                                    case Generic_Height: return Video_Height;
                                     case Generic_Duration : return Video_Duration;
                                     case Generic_Duration_String : return Video_Duration_String;
                                     case Generic_Duration_String1 : return Video_Duration_String1;
@@ -3795,6 +3895,8 @@ size_t File__Analyze::Fill_Parameter(stream_t StreamKind, generic StreamPos)
                                     case Generic_Codec_Info : return Text_Codec_Info;
                                     case Generic_Codec_Url : return Text_Codec_Url;
                                     case Generic_Codec_CC : return Text_Codec_CC;
+                                    case Generic_Width: return Text_Width;
+                                    case Generic_Height: return Text_Height;
                                     case Generic_Duration : return Text_Duration;
                                     case Generic_Duration_String : return Text_Duration_String;
                                     case Generic_Duration_String1 : return Text_Duration_String1;
@@ -3986,6 +4088,8 @@ size_t File__Analyze::Fill_Parameter(stream_t StreamKind, generic StreamPos)
                                     case Generic_Codec_String : return Image_Codec_String;
                                     case Generic_Codec_Info : return Image_Codec_Info;
                                     case Generic_Codec_Url : return Image_Codec_Url;
+                                    case Generic_Width: return Image_Width;
+                                    case Generic_Height: return Image_Height;
                                     case Generic_Duration : return Menu_Duration;
                                     case Generic_Duration_String : return Menu_Duration_String;
                                     case Generic_Duration_String1 : return Menu_Duration_String1;

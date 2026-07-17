@@ -1440,6 +1440,7 @@ void File__Analyze::Get_VL(const vlc Vlc[], size_t &Info, const char* Name)
                         if (BS->GetB())
                             Value++;
                         CountOfBits++;
+                        break;
             case   0 :  ;
         }
 
@@ -1837,6 +1838,33 @@ void File__Analyze::Get_ISO_8859_5(int64u Bytes, Ztring &Info, const char* Name)
 }
 
 //---------------------------------------------------------------------------
+void File__Analyze::Get_ISO_8859_9(int64u Bytes, Ztring &Info, const char* Name)
+{
+    INTEGRITY_SIZE_ATLEAST_STRING(Bytes);
+    Info.clear();
+    size_t End = Buffer_Offset + (size_t)Element_Offset + (size_t)Bytes;
+    for (size_t Pos=Buffer_Offset+(size_t)Element_Offset; Pos<End; ++Pos)
+    {
+        switch (Buffer[Pos])
+        {
+            case 0xD0 : Info+=Ztring().From_Unicode(L"\x11E"); break;
+            case 0xDD : Info+=Ztring().From_Unicode(L"\x130"); break;
+            case 0xDE : Info+=Ztring().From_Unicode(L"\x15E"); break;
+            case 0xF0 : Info+=Ztring().From_Unicode(L"\x11F"); break;
+            case 0xFD : Info+=Ztring().From_Unicode(L"\x131"); break;
+            case 0xFE : Info+=Ztring().From_Unicode(L"\x15F"); break;
+            default   :
+                        {
+                        wchar_t NewChar=Buffer[Pos];
+                        Info+=Ztring().From_Unicode(&NewChar, 1);
+                        }
+        }
+    }
+    if (Trace_Activated && Bytes) Param(Name, Info);
+    Element_Offset+=Bytes;
+}
+
+//---------------------------------------------------------------------------
 extern const int16u Ztring_MacRoman[128];
 void File__Analyze::Get_MacRoman(int64u Bytes, Ztring& Info, const char* Name)
 {
@@ -1938,6 +1966,19 @@ void File__Analyze::Skip_Local(int64u Bytes, const char* Name)
 }
 
 //---------------------------------------------------------------------------
+void File__Analyze::Skip_ISO_8859_1(int64u Bytes, const char* Name)
+{
+    INTEGRITY_SIZE_ATLEAST(Bytes);
+    if (Trace_Activated && Bytes)
+    {
+        Ztring Temp;
+        Get_ISO_8859_1(Bytes, Temp, Name);
+    }
+    else
+        Element_Offset+=Bytes;
+}
+
+//---------------------------------------------------------------------------
 void File__Analyze::Skip_ISO_6937_2(int64u Bytes, const char* Name)
 {
     INTEGRITY_SIZE_ATLEAST(Bytes);
@@ -1982,6 +2023,18 @@ void File__Analyze::Skip_UTF16L(int64u Bytes, const char* Name)
     Element_Offset+=Bytes;
 }
 
+//---------------------------------------------------------------------------
+size_t File__Analyze::SizeUpTo0(size_t MaxSize)
+{
+    auto Buffer_Begin=Buffer+Buffer_Offset+(size_t)Element_Offset;
+    auto Buffer_Current=Buffer_Begin;
+    auto Remaining=(size_t)(Element_Size-Element_Offset);
+    auto Buffer_End=Buffer_Begin+(MaxSize>Remaining?Remaining:MaxSize);
+    while (Buffer_Current<Buffer_End && *Buffer_Current)
+        Buffer_Current++;
+    return Buffer_Current-Buffer_Begin;
+}
+
 //***************************************************************************
 // Text
 //***************************************************************************
@@ -2009,7 +2062,7 @@ void File__Analyze::Skip_XX(int64u Bytes, const char* Name)
 {
     if (Element_Offset+Bytes!=Element_TotalSize_Get()) //Exception for seek to end of the element
     {
-        INTEGRITY_SIZE_ATLEAST(Bytes);
+        //INTEGRITY_SIZE_ATLEAST(Bytes);
     }
     if (Trace_Activated && Bytes) Param(Name, Ztring("(")+Ztring::ToZtring(Bytes)+Ztring(" bytes)"));
     Element_Offset+=Bytes;

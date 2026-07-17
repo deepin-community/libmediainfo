@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 project(MediaInfoLib)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 
-set(MediaInfoLib_MAJOR_VERSION 23)
-set(MediaInfoLib_MINOR_VERSION 10)
+set(MediaInfoLib_MAJOR_VERSION 25)
+set(MediaInfoLib_MINOR_VERSION 04)
 set(MediaInfoLib_PATCH_VERSION 0)
 set(MediaInfoLib_VERSION ${MediaInfoLib_MAJOR_VERSION}.${MediaInfoLib_MINOR_VERSION})
 
@@ -109,6 +109,7 @@ set(MediaInfoLib_PUBLIC_HDRS
 set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/ThirdParty/md5/md5.c
   ${MediaInfoLib_SOURCES_PATH}/ThirdParty/aes-gladman/aes_modes.c
+  ${MediaInfoLib_SOURCES_PATH}/ThirdParty/aes-gladman/aes_ni.c
   ${MediaInfoLib_SOURCES_PATH}/ThirdParty/aes-gladman/aescrypt.c
   ${MediaInfoLib_SOURCES_PATH}/ThirdParty/aes-gladman/aeskey.c
   ${MediaInfoLib_SOURCES_PATH}/ThirdParty/aes-gladman/aestab.c
@@ -147,6 +148,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Elf.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Gzip.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Iso9660.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_MachO.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Mz.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Rar.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Archive/File_Tar.cpp
@@ -171,6 +173,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Celt.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_ChannelGrouping.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_ChannelSplitting.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Dat.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Dsdiff.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Dsf.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Dts.cpp
@@ -179,6 +182,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_DolbyE.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_ExtendedModule.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Flac.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Iamf.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_Iab.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_ImpulseTracker.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Audio/File_La.cpp
@@ -233,6 +237,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Image/File_Rle.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Image/File_Tiff.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Image/File_Tga.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Image/File_WebP.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Multiple/File__ReferenceFilesHelper.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Multiple/File__ReferenceFilesHelper_Resource.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Multiple/File__ReferenceFilesHelper_Sequence.cpp
@@ -296,11 +301,13 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Reader/Reader_libmms.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File__Tags.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_ApeTag.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Icc.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Id3.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Id3v2.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Lyrics3.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Lyrics3v2.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_PropertyList.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_SphericalVideo.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_VorbisCom.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Tag/File_Xmp.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_AribStdB24B37.cpp
@@ -313,6 +320,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_Kate.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_N19.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_OtherText.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_Pac.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_Pdf.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_Pgs.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Text/File_Scc.cpp
@@ -328,6 +336,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Avc.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Avc_Duplicate.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_AvsV.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Avs3V.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Canopus.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_CineForm.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Dirac.cpp
@@ -336,6 +345,7 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Flic.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Fraps.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_H263.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_HdrVividMetadata.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Hevc.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_HuffYuv.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Lagarith.cpp
@@ -347,9 +357,11 @@ set(MediaInfoLib_SRCS
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Vc3.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Vp8.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Vp9.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Vvc.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/Video/File_Y4m.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/XmlUtils.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfo/OutputHelpers.cpp
+  ${MediaInfoLib_SOURCES_PATH}/MediaInfo/ExternalCommandHelpers.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfoDLL/MediaInfoJNI.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfoDLL/MediaInfoDLL.cpp
   ${MediaInfoLib_SOURCES_PATH}/MediaInfoDLL/MediaInfoDLL.def

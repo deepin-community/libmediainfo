@@ -320,6 +320,9 @@
     <ClCompile Include="..\..\..\Source\MediaInfo\Image\File_Tiff.cpp">
       <Filter>Source Files\Image</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Image\File_WebP.cpp">
+      <Filter>Source Files\Image</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\Multiple\File_Bdmv.cpp">
       <Filter>Source Files\Multiple</Filter>
     </ClCompile>
@@ -441,6 +444,9 @@
       <Filter>Source Files\Tag</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\Tag\File_ApeTag.cpp">
+      <Filter>Source Files\Tag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Tag\File_Icc.cpp">
       <Filter>Source Files\Tag</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\Tag\File_Id3.cpp">
@@ -588,6 +594,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\OutputHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\ExternalCommandHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\PreComp.cpp">
@@ -835,6 +844,30 @@
     </ClCompile>
     <ClCompile Include="..\..\..\Source\MediaInfo\Audio\File_Mga.cpp">
       <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Video\File_Vvc.cpp">
+      <Filter>Source Files\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Audio\File_Dat.cpp">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Text\File_Pac.cpp">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Video\File_HdrVividMetadata.cpp">
+      <Filter>Source Files\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Video\File_Avs3V.cpp">
+      <Filter>Source Files\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Archive\File_MachO.cpp">
+      <Filter>Source Files\Archive</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Audio\File_Iamf.cpp">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Source\MediaInfo\Tag\File_SphericalVideo.cpp">
+      <Filter>Source Files\Tag</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1150,6 +1183,9 @@
     <ClInclude Include="..\..\..\Source\MediaInfo\Tag\File_ApeTag.h">
       <Filter>Header Files\Tag</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Tag\File_Icc.h">
+      <Filter>Header Files\Tag</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\Source\MediaInfo\Tag\File_Id3.h">
       <Filter>Header Files\Tag</Filter>
     </ClInclude>
@@ -1301,6 +1337,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\Source\MediaInfo\OutputHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\ExternalCommandHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\Source\MediaInfo\Reader\Reader_libcurl_Include.h">
@@ -1474,9 +1513,6 @@
     <ClInclude Include="..\..\..\Source\ThirdParty\aes-gladman\brg_types.h">
       <Filter>ThirdParty\aes</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\Source\MediaInfo\Text\File_Sdp.h">
-      <Filter>Header Files\Tag</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\Source\MediaInfo\Tag\File_PropertyList.h">
       <Filter>Header Files\Tag</Filter>
     </ClInclude>
@@ -1569,6 +1605,36 @@
     </ClInclude>
     <ClInclude Include="..\..\..\Source\MediaInfo\Audio\File_Mga.h">
       <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Video\File_Vvc.h">
+      <Filter>Header Files\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Audio\File_Dat.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Text\File_Pac.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Text\File_Pac_Codepages.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Multiple\File_Mxf_Automated.h">
+      <Filter>Header Files\Multiple</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Video\File_HdrVividMetadata.h">
+      <Filter>Header Files\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Archive\File_MachO.h">
+      <Filter>Header Files\Archive</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Audio\File_Iamf.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Tag\File_SphericalVideo.h">
+      <Filter>Header Files\Tag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Source\MediaInfo\Text\File_Sdp.h">
+      <Filter>Header Files\Text</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

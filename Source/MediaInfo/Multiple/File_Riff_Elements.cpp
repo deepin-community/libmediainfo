@@ -957,11 +957,11 @@ void File_Riff::AVI__exif_xxxx()
     //Filling
     switch (Element_Code)
     {
-        case Elements::AVI__exif_ecor : Fill(Stream_General, 0, "Make", Value); break;
-        case Elements::AVI__exif_emdl : Fill(Stream_General, 0, "Model", Value); break;
+        case Elements::AVI__exif_ecor : Fill(Stream_General, 0, General_Encoded_Hardware_CompanyName, Value); break;
+        case Elements::AVI__exif_emdl : Fill(Stream_General, 0, General_Encoded_Hardware_Name, Value); break;
         case Elements::AVI__exif_emnt : Fill(Stream_General, 0, "MakerNotes", Value); break;
         case Elements::AVI__exif_erel : Fill(Stream_General, 0, "RelatedImageFile", Value); break;
-        case Elements::AVI__exif_etim : Fill(Stream_General, 0, "Written_Date", Value); break;
+        case Elements::AVI__exif_etim : Fill(Stream_General, 0, General_Encoded_Date, Value); break;
         case Elements::AVI__exif_eucm : Fill(Stream_General, 0, General_Comment, Value); break;
         case Elements::AVI__exif_ever : break; //Exif version
         default:                    Fill(Stream_General, 0, Ztring().From_CC4((int32u)Element_Code).To_Local().c_str(), Value);
@@ -1337,7 +1337,7 @@ void File_Riff::AVI__hdlr_strl_strf_auds()
     StreamItem.AvgBytesPerSec=AvgBytesPerSec; //Saving bitrate for each stream
     if (SamplesPerSec && TimeReference!=(int64u)-1)
     {
-        Fill(Stream_Audio, StreamPos_Last, Audio_Delay, float64_int64s(((float64)TimeReference)*1000/SamplesPerSec));
+        Fill(Stream_Audio, StreamPos_Last, Audio_Delay, ((float64)TimeReference)*1000/SamplesPerSec, 6);
         Fill(Stream_Audio, StreamPos_Last, Audio_Delay_Source, "Container (bext)");
     }
 
@@ -2169,6 +2169,7 @@ void File_Riff::AVI__hdlr_strl_vprp()
                             Fill(Stream_Video, 0, Video_ScanOrder, "TFF");
                         if (VideoYValidStartLines.size()==2 && VideoYValidStartLines[0]>VideoYValidStartLines[1])
                             Fill(Stream_Video, 0, Video_ScanOrder, "BFF");
+                        break;
             default: ;
         }
     FILLING_END();
@@ -2634,7 +2635,7 @@ void File_Riff::AVI__movi_xxxx()
             {
                 if (!StreamItem.Parsers[Pos]->Status[IsAccepted] && StreamItem.Parsers[Pos]->Status[IsFinished])
                 {
-                    delete *(StreamItem.Parsers.begin()+Pos);
+                    delete static_cast<MediaInfoLib::File__Analyze*>(*(StreamItem.Parsers.begin()+Pos));
                     StreamItem.Parsers.erase(StreamItem.Parsers.begin()+Pos);
                     Pos--;
                 }
@@ -2644,7 +2645,7 @@ void File_Riff::AVI__movi_xxxx()
                     for (size_t Pos2=0; Pos2<StreamItem.Parsers.size(); Pos2++)
                     {
                         if (Pos2!=Pos)
-                            delete *(StreamItem.Parsers.begin()+Pos2);
+                            delete static_cast<MediaInfoLib::File__Analyze*>(*(StreamItem.Parsers.begin()+Pos2));
                     }
                     StreamItem.Parsers.clear();
                     StreamItem.Parsers.push_back(Parser);
@@ -2794,7 +2795,7 @@ void File_Riff::AVI__movi_StreamJump()
     else if (Stream_Structure_Temp!=Stream_Structure.end())
     {
         do
-            Stream_Structure_Temp++;
+            ++Stream_Structure_Temp;
         while (Stream_Structure_Temp!=Stream_Structure.end() && !(Stream[(int32u)Stream_Structure_Temp->second.Name].SearchingPayload && Config->ParseSpeed<1.0));
         if (Stream_Structure_Temp!=Stream_Structure.end())
         {
@@ -3425,7 +3426,7 @@ void File_Riff::RMP3_data()
 {
     Element_Name("Raw datas");
 
-    Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, Buffer_DataToParse_End-Buffer_DataToParse_Begin);
+    Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, Buffer_DataToParse_End?((Buffer_DataToParse_End>File_Size?File_Size:Buffer_DataToParse_End)-Buffer_DataToParse_Begin):(Element_TotalSize_Get()-Alignement_ExtraByte));
     Stream_Prepare(Stream_Audio);
 
     //Creating parser
@@ -3440,7 +3441,7 @@ void File_Riff::RMP3_data()
         StreamItem.Parsers.push_back(Parser);
     #else //MEDIAINFO_MPEG4_YES
         Fill(Stream_Audio, StreamPos_Last, Audio_Format, "MPEG Audio");
-        Skip_XX(Buffer_DataToParse_End-Buffer_DataToParse_Begin, "Data");
+        Skip_XX(Buffer_DataToParse_End?((Buffer_DataToParse_End>File_Size?File_Size:Buffer_DataToParse_End)-Buffer_DataToParse_Begin):(Element_TotalSize_Get()-Alignement_ExtraByte), "Data");
     #endif
 }
 
@@ -3577,7 +3578,6 @@ void File_Riff::WAVE()
 
     //Filling
     Fill(Stream_General, 0, General_Format, "Wave");
-    Kind=Kind_Wave;
     #if MEDIAINFO_EVENTS
         StreamIDs_Width[0]=0;
     #endif //MEDIAINFO_EVENTS
@@ -3656,22 +3656,34 @@ struct profile_info
 
 void File_Riff::WAVE_axml()
 {
-    int64u Element_TotalSize=Element_TotalSize_Get();
-    if (Element_Size!=Element_TotalSize-Alignement_ExtraByte)
+    //Preparing
+    delete Adm;
+    Adm=new File_Adm;
+    Open_Buffer_Init(Adm);
+    if (Adm_chna)
     {
-        if (Buffer_MaximumSize<Element_TotalSize)
-            Buffer_MaximumSize+=Element_TotalSize;
-        size_t* File_Buffer_Size_Hint_Pointer=Config->File_Buffer_Size_Hint_Pointer_Get();
-        if (File_Buffer_Size_Hint_Pointer)
-            (*File_Buffer_Size_Hint_Pointer)=(size_t)(Element_TotalSize-Element_Size);
-        Element_WaitForMoreData();
-        return; //Must wait for more data
+        Adm->chna_Move(Adm_chna);
+        delete Adm_chna; Adm_chna=NULL;
     }
+    Adm->Container_Duration = Retrieve_Const(Stream_Audio, 0, Audio_Duration).To_float32()/1000;
+    Adm->MuxingMode=(Element_Code==Elements::WAVE_bxml)?'b':'a';
+    Adm->MuxingMode+="xml";
+    Kind=Kind_Axml;
 
-    int8u* UncompressedData;
-    size_t UncompressedData_Size;
     if (Element_Code==Elements::WAVE_bxml)
     {
+        int64u Element_TotalSize=Element_TotalSize_Get();
+        if (Element_Size!=Element_TotalSize-Alignement_ExtraByte)
+        {
+            if (Buffer_MaximumSize<Element_TotalSize)
+                Buffer_MaximumSize+=Element_TotalSize;
+            size_t* File_Buffer_Size_Hint_Pointer=Config->File_Buffer_Size_Hint_Pointer_Get();
+            if (File_Buffer_Size_Hint_Pointer)
+                (*File_Buffer_Size_Hint_Pointer)=(size_t)(Element_TotalSize-Element_Size);
+            Element_WaitForMoreData();
+            return; //Must wait for more data
+        }
+
         Element_Name("Compressed AXML");
 
         //Header
@@ -3718,32 +3730,40 @@ void File_Riff::WAVE_axml()
             strm.next_out=strm.next_out+strm.total_out;
             strm.avail_out=UncompressedData_NewMaxSize-strm.total_out;
         }
-        UncompressedData=strm.next_out-strm.total_out;
-        UncompressedData_Size=strm.total_out;
+        int8u* UncompressedData=strm.next_out-strm.total_out;
+        size_t UncompressedData_Size=strm.total_out;
+        inflateEnd(&strm);
+        //Parsing
+        Open_Buffer_Continue(Adm, UncompressedData, UncompressedData_Size);
+        delete[] UncompressedData;
+        Skip_UTF8(Element_Size, "XML data");
     }
     else
     {
         Element_Name("AXML");
 
-        UncompressedData=(int8u*)Buffer+Buffer_Offset;
-        UncompressedData_Size=(size_t)Element_Size;
+        //Parsing
+        Adm->TotalSize=Buffer_DataToParse_End?((Buffer_DataToParse_End>File_Size?File_Size:Buffer_DataToParse_End)-Buffer_DataToParse_Begin):(Element_TotalSize_Get()-Alignement_ExtraByte);
+        WAVE_axml_Continue();
     }
+}
 
+void File_Riff::WAVE_axml_Continue()
+{
     //Parsing
-    File_Adm* Adm_New=new File_Adm;
-    Adm_New->MuxingMode=(Element_Code==Elements::WAVE_bxml)?'b':'a';
-    Adm_New->MuxingMode+="xml";
-    Open_Buffer_Init(Adm_New);
-    Open_Buffer_Continue(Adm_New, UncompressedData, UncompressedData_Size);
-    if (Adm_New->Status[IsAccepted])
+    Open_Buffer_Continue(Adm, Buffer+Buffer_Offset, (size_t)Element_Size);
+    if (Adm->NeedToJumpToEnd)
     {
-        Adm_New->chna_Move(Adm);
-        delete Adm;
-        Adm=Adm_New;
+        auto Size=Element_TotalSize_Get();
+        if (Size>=16*1024*1024)
+        {
+            Size-=16*1024*1024;
+            GoTo(File_Offset+Buffer_Offset+Size);
+        }
+        else
+            Adm->NeedToJumpToEnd=false;
     }
-
-    //Parsing
-    Skip_UTF8(Element_Size, "XML data");
+    Element_Offset=Element_Size;
 }
 
 //---------------------------------------------------------------------------
@@ -3914,11 +3934,8 @@ void File_Riff::WAVE_chna()
 
     //Parsing
     int16u numUIDs;
-    if (!Adm)
-    {
-        Adm=new File_Adm;
-        Open_Buffer_Init(Adm);
-    }
+    auto Adm_Current = new File_Adm;
+    Open_Buffer_Init(Adm_chna);
     Skip_L2(                                                    "numTracks");
     Get_L2 (numUIDs,                                            "numUIDs");
     for (int32u Pos=0; Pos<numUIDs; Pos++)
@@ -3931,11 +3948,21 @@ void File_Riff::WAVE_chna()
         Skip_String(14,                                         "trackRef");
         Skip_String(11,                                         "packRef");
         Skip_L1(                                                "pad");
-        Adm->chna_Add(trackIndex, UID);
+        Adm_Current->chna_Add(trackIndex, UID);
         Element_End0();
         if (Element_Offset>=Element_Size)
             break;
     }
+
+    FILLING_BEGIN()
+        if (Adm)
+        {
+            Adm->chna_Move(Adm_Current);
+            delete Adm_Current; //Adm_Current=NULL
+        }
+        else
+            Adm_chna=Adm_Current;
+    FILLING_END();
 }
 
 //---------------------------------------------------------------------------
@@ -3963,10 +3990,11 @@ void File_Riff::WAVE_cue_()
 void File_Riff::WAVE_data()
 {
     Element_Name("Raw datas");
+    Kind=Kind_Wave;
 
-    if (Buffer_DataToParse_End-Buffer_DataToParse_Begin<100)
+    if (Buffer_DataToParse_End && Buffer_DataToParse_End-Buffer_DataToParse_Begin<100)
     {
-        Skip_XX(Buffer_DataToParse_End-Buffer_Offset,           "Unknown");
+        Skip_XX(Buffer_DataToParse_End-Alignement_ExtraByte-Buffer_Offset, "Unknown");
         return; //This is maybe embeded in another container, and there is only the header (What is the junk?)
     }
 
@@ -3974,7 +4002,7 @@ void File_Riff::WAVE_data()
     Element_Code=(int64u)-1;
 
     FILLING_BEGIN();
-        int64u StreamSize=Buffer_DataToParse_End-Buffer_DataToParse_Begin;
+        int64u StreamSize=(Buffer_DataToParse_End?((Buffer_DataToParse_End>File_Size?File_Size:Buffer_DataToParse_End)-Buffer_DataToParse_Begin):(Element_TotalSize_Get()-Alignement_ExtraByte))-(Element_Code==Elements::AIFF_SSND?8:0);
         Fill(Stream_Audio, StreamPos_Last, Audio_StreamSize, StreamSize, 10, true);
         if (Retrieve(Stream_Audio, StreamPos_Last, Audio_Format)==__T("PCM") && BlockAlign)
             Fill(Stream_Audio, StreamPos_Last, Audio_SamplingCount, StreamSize/BlockAlign, 10, true);
@@ -3996,6 +4024,8 @@ void File_Riff::WAVE_data()
             Fill(Stream_General, 0, General_Duration, Retrieve_Const(Stream_General, 0, General_Duration).To_int64u()+Duration, 0, true); // Found files with 2 fmt/data chunks
             Fill(Stream_Audio, StreamPos_Last, Audio_Duration, Duration, 0, true);
         }
+        if (!Buffer_DataToParse_End)
+            WAVE_data_Continue();
     FILLING_END();
 }
 
@@ -4046,9 +4076,16 @@ void File_Riff::WAVE_ds64()
     Skip_L8(                                                    "riffSize"); //Is directly read from the header parser
     Get_L8 (dataSize,                                           "dataSize");
     Get_L8 (sampleCount,                                        "sampleCount");
-    Get_L4 (tableLength,                                        "tableLength");
-    for (int32u Pos=0; Pos<tableLength; Pos++)
-        Skip_L8(                                                "table[]");
+    if (Element_Offset<Element_Size)
+    {
+        Get_L4 (tableLength,                                    "tableLength");
+        DS64_Table.resize(tableLength);
+        for (int32u Pos=0; Pos<tableLength; Pos++)
+        {
+            Get_C4 (DS64_Table[Pos].ChunkId,                    "tableChunkId");
+            Get_L8 (DS64_Table[Pos].Size,                       "tableChunkSize");
+        }
+    }
 
     FILLING_BEGIN();
         if (dataSize && dataSize<File_Size)
@@ -4082,7 +4119,6 @@ void File_Riff::WAVE_fact()
     Get_L4 (SamplesCount,                                       "SamplesCount");
 
     FILLING_BEGIN();
-        if (!Retrieve(Stream_Audio, StreamPos_Last, Audio_SamplingCount).empty()) // Not the priority
         {
         int64u SamplesCount64=SamplesCount==(int32u)-1?WAVE_fact_samplesCount:SamplesCount;
         float64 SamplingRate=Retrieve(Stream_Audio, StreamPos_Last, Audio_SamplingRate).To_float64();
@@ -4100,7 +4136,12 @@ void File_Riff::WAVE_fact()
                 {
                     int64u Duration_FromBitRate = File_Size * 8 * 1000 / BitRate;
                     if (Duration_FromBitRate > Duration*1.02 || Duration_FromBitRate < Duration*0.98)
-                        IsOK = false;
+                    {
+                        if (Retrieve(Stream_Audio, StreamPos_Last, Audio_Format) == __T("PCM"))
+                            IsOK = false;
+                        else
+                            Clear(Stream_Audio, StreamPos_Last, Audio_BitRate); // Bit rate is often not precise or wrong for non PCM
+                    }
                 }
             }
 
@@ -4265,7 +4306,7 @@ void File_Riff::Parser_Pcm(stream& StreamItem, int16u Channels, int16u BitsPerSa
     if (Channels==2 && BitsPerSample<=32 && SamplesPerSec==48000) //Some SMPTE ST 337 streams are hidden in PCM stream
     {
         File_SmpteSt0337* Parser=new File_SmpteSt0337;
-        Parser->Container_Bits=(int8u)BitsPerSample;
+        Parser->BitDepth=(int8u)BitsPerSample;
         Parser->Aligned=true;
         Parser->ShouldContinueParsing=true;
         #if MEDIAINFO_DEMUX
